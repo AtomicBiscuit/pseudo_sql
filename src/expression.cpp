@@ -14,13 +14,13 @@ pop_safe(std::vector<tokenize::Token> &stack, std::vector<std::unique_ptr<Operat
     stack.pop_back();
 }
 
-std::unique_ptr<database::Operation> ColumnExpression::parse(std::stringstream &in, ColumnContext &ctx) {
+std::unique_ptr<database::Operation> ColumnExpression::parse(const std::string &in, ColumnContext &ctx) {
     tokenize::Token cur = {nullptr, tokenize::Type::BinaryOperation, 0};
     bool is_len = false;
     std::vector<std::unique_ptr<Operation>> post;
     std::vector<tokenize::Token> ops;
-    auto view = in.view();
-    while (view.begin() != in.view().end()) {
+    auto view = std::string_view(in);
+    while (!view.empty()) {
         if (isspace(view[0])) {
             view.remove_prefix(1);
             continue;
@@ -89,5 +89,5 @@ std::unique_ptr<database::Operation> ColumnExpression::parse(std::stringstream &
     if (not post.empty()) {
         throw syntax_error("Невалидное число операндом в выражении");
     }
-    return std::move(result);
+    return result;
 }

@@ -19,12 +19,12 @@ Token Token::get_operation(std::string_view &c, Type last, bool is_len) {
         return {std::make_unique<database::BinaryOperation>(op), Type::BinaryOperation, 2};
     }
 
-    if (c.starts_with(">=") or c.starts_with("<=") or c.starts_with("!=") and last == Type::Operand) {
+    if (c.starts_with(">=") or c.starts_with("<=") or (c.starts_with("!=") and last == Type::Operand)) {
         auto op = std::string(c.begin(), c.begin() + 2);
         c.remove_prefix(2);
         return {std::make_unique<database::ComparisonOperation>(op), Type::BinaryOperation, 0};
     } else if (">=<"s.contains(c[0]) and last == Type::Operand) {
-        auto op = std::string(c[0], 1);
+        auto op = std::string(1, c[0]);
         c.remove_prefix(1);
         return {std::make_unique<database::ComparisonOperation>(op), Type::BinaryOperation, 0};
     }
@@ -65,7 +65,7 @@ Token Token::get_operation(std::string_view &c, Type last, bool is_len) {
         c.remove_prefix(4);
         return {std::make_unique<database::BoolOperation>(true), Type::Operand, 20};
     } else if (isalpha(c[0]) and last != Type::Operand) {
-        return {std::make_unique<database::FieldOperation>(get_name(c)), Type::Operand, 42};
+        return {std::make_unique<database::FieldOperation>(get_full_name(c)), Type::Operand, 42};
     }
 
     throw syntax_error("Неразрешимый в контексте литерал: " + std::string(c));
@@ -89,7 +89,7 @@ std::string Token::get_str(std::string_view &view) {
     }
     auto temp = std::string(view.begin() + 1, view.begin() + cnt);
     view.remove_prefix(cnt + 1);
-    return std::move(temp);
+    return temp;
 }
 
 std::vector<bool> Token::get_bytes(std::string_view &view) {
@@ -107,7 +107,7 @@ std::vector<bool> Token::get_bytes(std::string_view &view) {
         ++c;
     }
     view.remove_prefix(cnt);
-    return std::move(b);
+    return b;
 }
 
 Token &Token::operator=(Token &&other) noexcept {
@@ -130,7 +130,10 @@ int Token::get_int(std::string_view &view) {
     return b;
 }
 
-std::string Token::get_name(std::string_view &view) {
+std::string Token::get_full_name(std::string_view &view) {
+    if (view.empty() or !isalpha(view[0])) {
+        return "";
+    }
     int cnt = 0;
     auto c = view.begin();
     while (c != view.end() and (isalnum(*c) or *c == '.' or *c == '_')) {
@@ -139,5 +142,20 @@ std::string Token::get_name(std::string_view &view) {
     }
     auto temp = std::string(view.begin(), view.begin() + cnt);
     view.remove_prefix(cnt);
-    return std::move(temp);
+    return temp;
+}
+
+std::string Token::get_name(std::string_view &view) {
+    if (view.empty() or !isalpha(view[0])) {
+        return "";
+    }
+    int cnt = 0;
+    auto c = view.begin();
+    while (c != view.end() and (isalnum(*c) or *c == '_')) {
+        ++c;
+        ++cnt;
+    }
+    auto temp = std::string(view.begin(), view.begin() + cnt);
+    view.remove_prefix(cnt);
+    return temp;
 }

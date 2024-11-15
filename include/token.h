@@ -34,6 +34,7 @@ namespace tokenize {
 
         static int get_int(std::string_view &);
 
-        static std::string get_name(std::string_view &);
+        static std::string get_full_name(std::string_view &view);
+        static std::string get_name(std::string_view &view);
     };
 }

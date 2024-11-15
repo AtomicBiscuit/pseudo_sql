@@ -17,7 +17,7 @@ namespace database {
         virtual void _throw() const = 0;
 
     public:
-        virtual IColumn::value_t eval(int col) const = 0;
+        virtual value_t eval(int col) const = 0;
 
         virtual void bind(std::vector<std::unique_ptr<Operation>> &ops) = 0;
 
@@ -37,7 +37,7 @@ namespace database {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override;
 
-        IColumn::value_t eval(int col) const override;
+        value_t eval(int col) const override;
 
     };
 
@@ -55,7 +55,7 @@ namespace database {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override;
 
-        IColumn::value_t eval(int col) const override;
+        value_t eval(int col) const override;
 
     };
 
@@ -70,7 +70,7 @@ namespace database {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override;
 
-        IColumn::value_t eval(int col) const override;
+        value_t eval(int col) const override;
     };
 
     class ScopeOperation : public Operation {
@@ -81,7 +81,7 @@ namespace database {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override { _throw(); };
 
-        IColumn::value_t eval(int col) const override {
+        value_t eval(int col) const override {
             _throw();
             return -1;
         };
@@ -97,7 +97,7 @@ namespace database {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override;
 
-        IColumn::value_t eval(int col) const override;
+        value_t eval(int col) const override;
     };
 
     class IntegerOperation : public Operation {
@@ -109,7 +109,7 @@ namespace database {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override {};
 
-        IColumn::value_t eval(int col) const override { return val_; };
+        value_t eval(int col) const override { return val_; };
     };
 
     class StringOperation : public Operation {
@@ -121,7 +121,7 @@ namespace database {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override {};
 
-        IColumn::value_t eval(int col) const override { return val_; };
+        value_t eval(int col) const override { return val_; };
     };
 
     class BoolOperation : public Operation {
@@ -133,7 +133,7 @@ namespace database {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override {};
 
-        IColumn::value_t eval(int col) const override { return val_; };
+        value_t eval(int col) const override { return val_; };
     };
 
     class BytesOperation : public Operation {
@@ -145,7 +145,7 @@ namespace database {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override {};
 
-        IColumn::value_t eval(int col) const override { return val_; };
+        value_t eval(int col) const override { return val_; };
     };
 
     class FieldOperation : public Operation {
@@ -161,6 +161,8 @@ namespace database {
 
         void resolve(ColumnContext &);
 
-        IColumn::value_t eval(int col) const override;
+        const std::string &name() const { return name_; };
+
+        value_t eval(int col) const override;
     };
 }

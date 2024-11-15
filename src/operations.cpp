@@ -31,7 +31,7 @@ void BinaryOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
 }
 
 
-IColumn::value_t BinaryOperation::eval(int col) const {
+value_t BinaryOperation::eval(int col) const {
     if (type_ == Type::Integer) {
         int v1 = get<int>(arg1_->eval(col));
         int v2 = get<int>(arg2_->eval(col));
@@ -43,8 +43,10 @@ IColumn::value_t BinaryOperation::eval(int col) const {
             case '*':
                 return v2 * v1;
             case '/':
+                if (v1 == 0) throw execution_error("Попытка деления на 0");
                 return v2 / v1;
             case '%':
+                if (v1 == 0) throw execution_error("Попытка деления на 0");
                 return v2 % v1;
         }
     } else if (type_ == Type::Boolean) {
@@ -52,11 +54,11 @@ IColumn::value_t BinaryOperation::eval(int col) const {
         bool v2 = get<bool>(arg2_->eval(col));
         switch (op_) {
             case '&':
-                return v1 && v2;
+                return static_cast<bool>(v1 && v2);
             case '^':
-                return v2 ^ v1;
+                return static_cast<bool>(v2 ^ v1);
             case '|':
-                return v2 || v1;
+                return static_cast<bool>(v2 || v1);
         }
     }
     return get<std::string>(arg1_->eval(col)) + get<std::string>(arg2_->eval(col));
@@ -86,7 +88,7 @@ void UnaryOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
 }
 
 
-IColumn::value_t UnaryOperation::eval(int col) const {
+value_t UnaryOperation::eval(int col) const {
     if (type_ == Type::Integer) {
         int v = get<int>(arg_->eval(col));
         if (op_ == '-') {
@@ -113,7 +115,7 @@ void ComparisonOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
 
     arg1_ = std::move(f);
     arg2_ = std::move(s);
-    type_ = arg1_->type();
+    type_ = Type::Boolean;
 
     if (arg1_->type() != arg2_->type()) {
         _throw();
@@ -121,14 +123,14 @@ void ComparisonOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
 }
 
 
-IColumn::value_t ComparisonOperation::eval(int col) const {
-    if (type_ == Type::Integer) {
+value_t ComparisonOperation::eval(int col) const {
+    if (arg1_->type() == Type::Integer) {
         return _compare<int>(col);
-    } else if (type_ == Type::String) {
+    } else if (arg1_->type() == Type::String) {
         return _compare<std::string>(col);
-    } else if (type_ == Type::Bytes) {
+    } else if (arg1_->type() == Type::Bytes) {
         return _compare<std::vector<bool>>(col);
-    } else if (type_ == Type::Boolean) {
+    } else if (arg1_->type() == Type::Boolean) {
         return _compare<bool>(col);
     }
     _throw();
@@ -180,15 +182,16 @@ void LenOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
     }
 }
 
-IColumn::value_t LenOperation::eval(int col) const {
+value_t LenOperation::eval(int col) const {
     if (arg_->type() == Type::String) {
         return static_cast<int>(get<std::string>(arg_->eval(col)).size());
-    } else if (type_ == Type::Bytes) {
-        return static_cast<int>(get<std::vector<bool>>(arg_->eval(col)).size());
+    } else if (arg_->type() == Type::Bytes) {
+        return static_cast<int>(get<std::vector<bool>>(arg_->eval(col)).size()) / 4;
     }
+    _throw();
 }
 
-IColumn::value_t FieldOperation::eval(int col) const {
+value_t FieldOperation::eval(int col) const {
     return col_->get_value(col);
 }
 

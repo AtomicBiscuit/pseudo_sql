@@ -15,11 +15,13 @@ namespace database {
 
     class ColumnExpression {
     public:
-        static std::unique_ptr<Operation> parse(std::stringstream &, ColumnContext &);
+        static std::unique_ptr<Operation> parse(const std::string &, ColumnContext &);
     };
 
     class CommandExpression {
     public:
         virtual std::unique_ptr<Operation> parse(std::stringstream &) const = 0;
+
+        virtual ~CommandExpression() = default;
     };
 }

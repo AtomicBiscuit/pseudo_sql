@@ -18,6 +18,8 @@ namespace tokenize {
 
         std::shared_ptr<database::CommandExpression> get_command(std::stringstream &) const;
 
+        static std::vector<std::string> clear_parse(const std::string &, const std::string &, bool);
+
         static inline Parser &get_parser() {
             static Parser _parser;
             return _parser;
@@ -33,6 +35,7 @@ namespace tokenize {
             Parser::get_parser().register_command(name, std::move(com));
         }
     };
+
 }
 
 static std::string to_lower(std::string s) {
