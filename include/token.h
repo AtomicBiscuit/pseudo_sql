@@ -1,13 +1,31 @@
 #pragma once
 
-#include <memory>
-#include <map>
-#include "table.h"
 #include "syexception.h"
 #include "operations.h"
 
+#include <memory>
+#include <map>
+#include <vector>
+#include <ranges>
+#include <algorithm>
+
+using std::string_literals::operator ""s;
 
 namespace tokenize {
+    void skip_spaces(std::string_view &view, bool reversed = false);
+
+    bool check_empty(const std::string_view &view);
+
+    std::string get_str(std::string_view &);
+
+    std::vector<bool> get_bytes(std::string_view &);
+
+    int get_int(std::string_view &);
+
+    std::string get_full_name(std::string_view &view);
+
+    std::string get_name(std::string_view &view);
+
     enum class Type {
         UnaryOperation, BinaryOperation,
         Operand,
@@ -27,14 +45,5 @@ namespace tokenize {
         Token &operator=(Token &&other) noexcept;
 
         static Token get_operation(std::string_view &c, Type last, bool is_len);
-
-        static std::string get_str(std::string_view &);
-
-        static std::vector<bool> get_bytes(std::string_view &);
-
-        static int get_int(std::string_view &);
-
-        static std::string get_full_name(std::string_view &view);
-        static std::string get_name(std::string_view &view);
     };
 }

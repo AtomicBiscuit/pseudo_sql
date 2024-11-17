@@ -2,25 +2,18 @@
 
 #include "token.h"
 #include "operations.h"
+
 #include <string>
 #include <sstream>
 
 namespace database {
+    std::unique_ptr<Operation> build_execution_tree_from_expression(const std::string &, ColumnContext &);
 
-    class TableExpression {
-
-    };
-
-    using ColumnContext = std::map<std::string, std::shared_ptr<database::IColumn>>;
-
-    class ColumnExpression {
-    public:
-        static std::unique_ptr<Operation> parse(const std::string &, ColumnContext &);
-    };
+    std::tuple<std::shared_ptr<Table>, std::string> get_table_from_expression(const std::string &, TableContext &);
 
     class CommandExpression {
     public:
-        virtual std::unique_ptr<Operation> parse(std::stringstream &) const = 0;
+        virtual std::shared_ptr<Table> parse_and_execute(const std::string &, TableContext &) const = 0;
 
         virtual ~CommandExpression() = default;
     };

@@ -5,4 +5,5 @@ add_library(
         expression.cpp
         token.cpp
         operations.cpp
+        table.cpp
 )

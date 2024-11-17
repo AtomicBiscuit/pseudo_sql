@@ -8,14 +8,11 @@
 #include <memory>
 
 namespace database {
-    using ColumnContext = std::map<std::string, std::shared_ptr<IColumn>>;
-
     class Operation {
-    protected:
-        Type type_ = Type::None;
-    private:
         virtual void _throw() const = 0;
 
+    protected:
+        Type type_ = Type::None;
     public:
         virtual value_t eval(int col) const = 0;
 
@@ -71,20 +68,6 @@ namespace database {
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override;
 
         value_t eval(int col) const override;
-    };
-
-    class ScopeOperation : public Operation {
-        void _throw() const override;
-
-    public:
-        ScopeOperation() = default;
-
-        void bind(std::vector<std::unique_ptr<Operation>> &ops) override { _throw(); };
-
-        value_t eval(int col) const override {
-            _throw();
-            return -1;
-        };
     };
 
     class LenOperation : public Operation {

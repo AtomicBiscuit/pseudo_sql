@@ -1,9 +1,14 @@
 #pragma once
 
+#include "syexception.h"
+
 #include <variant>
 #include <vector>
+#include <map>
+#include <memory>
 #include <string>
 #include <sstream>
+#include <unordered_set>
 
 namespace database {
     enum class Type {
@@ -48,15 +53,39 @@ namespace database {
     }
 
     class IColumn {
+    protected:
         Type type_;
         std::string name_;
+        value_t default_value_;
+        bool is_default = false;
+        bool is_unique_ = false;
+        bool is_autoinc_ = false;
     public:
 
         IColumn(Type type, const std::string &name) : type_(type), name_(name) {};
 
+        IColumn(const IColumn &other) : type_(other.type_), name_(other.name_), is_default(other.is_default),
+                                        is_unique_(other.is_unique_), is_autoinc_(other.is_autoinc_) {};
+
+        IColumn(IColumn &&other) noexcept: type_(other.type_), name_(std::move(other.name_)),
+                                           is_default(other.is_default), is_unique_(other.is_unique_),
+                                           is_autoinc_(other.is_autoinc_) {};
+
+        virtual ~IColumn() = default;
+
+        virtual void check_valid() const = 0;
+
         Type type() const { return type_; }
 
         const std::string &name() const { return name_; }
+
+        virtual std::shared_ptr<IColumn> multicopy(size_t, bool) const = 0;
+
+        virtual void apply_changes(const std::vector<int> &) = 0;
+
+        virtual std::shared_ptr<IColumn> copy_apply_changes(const std::vector<int> &, const std::string &) const = 0;
+
+        virtual size_t size() const = 0;
 
         virtual value_t get_value(int row) const = 0;
     };
@@ -67,10 +96,92 @@ namespace database {
     public:
         Column(Type type, const std::string &name) : IColumn(type, name) {};
 
-        Column(const Column &other) : rows_(other.rows_) {};
+        Column(const Column &other) : IColumn(other), rows_(other.rows_) {};
+
+        Column(Column &&other) noexcept: IColumn(std::move(other)), rows_(std::move(other.rows_)) {};
+
+
+        void set_rows(std::vector<T> &&rows) {
+            rows_ = std::move(rows);
+        }
+
+        void check_valid() const override {
+            if (is_unique_ and std::unordered_set<value_t>(rows_.begin(), rows_.end()).size() != rows_.size()) {
+                throw execution_error("Нарушено требование unique столбца " + name_);
+            }
+        }
+
+        std::shared_ptr<IColumn> multicopy(size_t cnt, bool is_seq) const override {
+            auto res = std::make_shared<Column<T>>(type_, name_);
+            std::vector<T> rows;
+            rows.reserve(rows.size() * cnt);
+            if (is_seq) {
+                for (size_t i = 0; i < cnt; i++) {
+                    rows.insert(rows.end(), rows_.begin(), rows_.end());
+                }
+            } else {
+                for (const auto &i: rows_) {
+                    rows.insert(rows.end(), cnt, i);
+                }
+            }
+            res->set_rows(std::move(rows));
+            return std::move(res);
+        }
+
+        void apply_changes(const std::vector<int> &rows) override {
+            std::vector<T> res;
+            res.reserve(rows.size());
+            int ind = 0;
+            for (auto i: rows) {
+                res[ind++] = std::move(rows_[i]);
+            }
+            set_rows(std::move(res));
+        }
+
+        std::shared_ptr<IColumn>
+        copy_apply_changes(const std::vector<int> &rows, const std::string &name) const override {
+            std::vector<T> res;
+            res.reserve(rows.size());
+            int ind = 0;
+            for (auto i: rows) {
+                res[ind++] = rows_[i];
+            }
+            auto temp = std::make_shared<Column<T>>(type_, name);
+            temp->set_rows(std::move(res));
+            return temp;
+        }
+
+        virtual size_t size() const override { return rows_.size(); };
 
         value_t get_value(int row) const override {
             return rows_[row];
         }
+    };
+
+    class Table {
+        std::string name_;
+        std::vector<std::shared_ptr<IColumn>> cols_;
+    public:
+        Table() = default;
+
+        explicit Table(const std::string &name) : name_(name) {};
+
+        std::vector<std::shared_ptr<IColumn>> get_columns() { return cols_; }
+
+        std::string name() { return name_; }
+
+        void add_column(const std::shared_ptr<IColumn> &col) { cols_.push_back(col); }
+
+        void check_valid() const;
+
+        std::shared_ptr<Table> copy() const;
+    };
+
+
+    using ColumnContext = std::map<std::string, std::shared_ptr<IColumn>>;
+
+    struct TableContext {
+        std::map<std::string, std::shared_ptr<database::Table>> tables;
+        int number = 1;
     };
 }

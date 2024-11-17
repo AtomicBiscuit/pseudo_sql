@@ -31,7 +31,7 @@ Token Token::get_operation(std::string_view &c, Type last, bool is_len) {
 
     if (c[0] == '(' and last != Type::Operand) {
         c.remove_prefix(1);
-        return {std::make_unique<database::ScopeOperation>(), Type::OpenScope, 10};
+        return {nullptr, Type::OpenScope, 10};
     } else if (c[0] == ')' and last == Type::Operand) {
         c.remove_prefix(1);
         return {nullptr, Type::CloseScope, 10};
@@ -71,7 +71,7 @@ Token Token::get_operation(std::string_view &c, Type last, bool is_len) {
     throw syntax_error("Неразрешимый в контексте литерал: " + std::string(c));
 }
 
-std::string Token::get_str(std::string_view &view) {
+std::string tokenize::get_str(std::string_view &view) {
     int cnt = 1;
     auto c = view.begin();
     c++;
@@ -92,7 +92,7 @@ std::string Token::get_str(std::string_view &view) {
     return temp;
 }
 
-std::vector<bool> Token::get_bytes(std::string_view &view) {
+std::vector<bool> tokenize::get_bytes(std::string_view &view) {
     int cnt = 2;
     std::vector<bool> b;
     auto c = view.begin() + 2;
@@ -117,7 +117,7 @@ Token &Token::operator=(Token &&other) noexcept {
     return *this;
 }
 
-int Token::get_int(std::string_view &view) {
+int tokenize::get_int(std::string_view &view) {
     int cnt = 0;
     int b = 0;
     auto c = view.begin();
@@ -130,7 +130,7 @@ int Token::get_int(std::string_view &view) {
     return b;
 }
 
-std::string Token::get_full_name(std::string_view &view) {
+std::string tokenize::get_full_name(std::string_view &view) {
     if (view.empty() or !isalpha(view[0])) {
         return "";
     }
@@ -145,7 +145,7 @@ std::string Token::get_full_name(std::string_view &view) {
     return temp;
 }
 
-std::string Token::get_name(std::string_view &view) {
+std::string tokenize::get_name(std::string_view &view) {
     if (view.empty() or !isalpha(view[0])) {
         return "";
     }
@@ -158,4 +158,20 @@ std::string Token::get_name(std::string_view &view) {
     auto temp = std::string(view.begin(), view.begin() + cnt);
     view.remove_prefix(cnt);
     return temp;
+}
+
+void tokenize::skip_spaces(std::string_view &view, bool reversed) {
+    if (!reversed) {
+        while (!view.empty() and " \n\r\t"s.contains(view.front())) {
+            view.remove_prefix(1);
+        }
+        return;
+    }
+    while (!view.empty() and " \n\r\t"s.contains(view.back())) {
+        view.remove_suffix(1);
+    }
+}
+
+bool tokenize::check_empty(const std::string_view &view) {
+    return std::ranges::all_of(view, [](char c) { return c == ' ' or c == '\n' or c == '\r' or c == '\t'; });
 }

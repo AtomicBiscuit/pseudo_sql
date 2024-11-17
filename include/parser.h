@@ -14,7 +14,7 @@ namespace tokenize {
     private:
         std::map<std::string, std::shared_ptr<database::CommandExpression>> command_;
     public:
-        std::unique_ptr<database::Operation> parse_command(const std::string &) const;
+        std::unique_ptr<database::Operation> execute_command(const std::string &target) const;
 
         std::shared_ptr<database::CommandExpression> get_command(std::stringstream &) const;
 
@@ -38,7 +38,11 @@ namespace tokenize {
 
 }
 
-static std::string to_lower(std::string s) {
+static inline std::string to_lower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
     return s;
+}
+
+static inline std::string to_lower(std::string_view s) {
+    return to_lower(std::string(s));
 }

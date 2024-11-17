@@ -1,7 +1,7 @@
 #include "../include/operations.h"
-#include "../include/syexception.h"
 
 using namespace database;
+using namespace std::string_literals;
 
 void BinaryOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
     auto f = std::move(ops.back());
@@ -66,7 +66,8 @@ value_t BinaryOperation::eval(int col) const {
 
 void BinaryOperation::_throw() const {
     throw syntax_error(
-            "Оператор `" + std::string(1, op_) + "` не определен для типов " + type_to_str(arg2_->type()) + ", " +
+            "Оператор `" + std::string(1 + ("%|^"s.contains(op_)), op_) + "` не определен для типов " +
+            type_to_str(arg2_->type()) + ", " +
             type_to_str(arg1_->type())
     );
 }
@@ -98,6 +99,7 @@ value_t UnaryOperation::eval(int col) const {
     } else if (type_ == Type::Boolean) {
         return not get<bool>(arg_->eval(col));
     }
+    _throw();
 }
 
 void UnaryOperation::_throw() const {
@@ -158,10 +160,6 @@ bool ComparisonOperation::_compare(int col) const {
         return a <= b;
     }
     _throw();
-}
-
-void ScopeOperation::_throw() const {
-    throw std::runtime_error("Объект ScopeOperation не должен вызываться");
 }
 
 void LenOperation::_throw() const {
