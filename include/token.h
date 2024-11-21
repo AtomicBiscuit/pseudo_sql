@@ -17,6 +17,9 @@ namespace tokenize {
 
     bool check_empty(const std::string_view &view);
 
+
+    std::string get_word(std::string_view &);
+
     std::string get_str(std::string_view &);
 
     std::vector<bool> get_bytes(std::string_view &);

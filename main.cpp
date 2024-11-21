@@ -6,7 +6,6 @@
 
 
 int main() {
-    //tokenize::Parser::get_parser().parse_command("seLect x1 + 5, 6 from users join pepegas");
     DataBase db;
     while (true) {
         try {

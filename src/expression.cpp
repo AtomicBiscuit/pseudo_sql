@@ -54,6 +54,7 @@ database::get_table_from_expression(const std::string &in, TableContext &ctx) {
     }
     if (parts.size() == 2) {
         auto view_alias = std::string_view(parts[1]);
+        tokenize::skip_spaces(view_alias);
         alias = tokenize::get_name(view_alias);
 
         if (!tokenize::check_empty(view_alias)) {

@@ -2,9 +2,7 @@
 #include <vector>
 #include <ranges>
 #include "../include/select.h"
-#include "../include/operations.h"
 #include "../include/token.h"
-#include "../include/expression.h"
 
 using namespace std::string_literals;
 using namespace database;
@@ -42,13 +40,10 @@ fill(const std::vector<int> &valid, std::unique_ptr<Operation> val, const std::s
 
 std::shared_ptr<Table> Select::parse_and_execute(const std::string &str, TableContext &ctx) const {
     std::string_view view(str);
-    tokenize::skip_spaces(view);
     std::string temp;
-    std::stringstream(std::string(view)) >> temp;
-    if (tokenize::to_lower(temp) != "select") {
+    if (tokenize::to_lower(temp = tokenize::get_word(view)) != "select") {
         throw syntax_error("Ожидалось ключевое слово `select`, найдено: " + temp);
     }
-    view.remove_prefix("select"s.size());
 
     auto cols_other = tokenize::clear_parse(std::string(view), "from", true);
     if (cols_other.size() != 2) {
@@ -66,7 +61,7 @@ std::shared_ptr<Table> Select::parse_and_execute(const std::string &str, TableCo
 
     auto columns = _resolve_column_expr(cols, column_ctx);
 
-    auto condition = build_execution_tree_from_expression(cols, column_ctx);
+    auto condition = build_execution_tree_from_expression(cond, column_ctx);
 
     if (condition->type() != Type::Boolean) {
         throw execution_error("Тип выражения `where` не является bool");
@@ -100,7 +95,7 @@ Select::_resolve_column_expr(const std::string &cols, ColumnContext &ctx) {
         }
 
         auto col_expr = build_execution_tree_from_expression(parts[0], ctx);
-        std::string name = "column " + std::to_string(++col_num);
+        std::string name = "column" + std::to_string(++col_num);
 
         if (parts.size() == 1) {
             FieldOperation *column;
@@ -118,18 +113,17 @@ Select::_resolve_column_expr(const std::string &cols, ColumnContext &ctx) {
 
         columns.emplace_back(std::move(col_expr), name);
 
-        std::cout << parts[0] << " | name = " << columns.back().second << " | value = "
-                  << value_to_string(columns.back().first->eval(0), columns.back().first->type())
+        std::cout << parts[0] << " | name = " << columns.back().second
                   << " of type " << type_to_str(columns.back().first->type()) << std::endl;
     }
     return columns;
 }
 
 static void
-add_columns_to_context(std::shared_ptr<Table> &table, const std::string &name, int count, bool shorty,
+add_columns_to_context(std::shared_ptr<Table> &table, const std::string &name, int from, int count, bool shorty,
                        ColumnContext &ctx) {
     auto cols = table->get_columns();
-    for (auto col: std::views::counted(table->get_columns().begin(), count)) {
+    for (auto col: std::views::counted(cols.begin() + from, count)) {
         auto full_name = name + "." + col->name();
         if (ctx.contains(full_name)) {
             throw syntax_error("Неоднозначно определен столбец `" + full_name + "`");
@@ -183,10 +177,10 @@ Select::_resolve_table_expr(const std::string &table_str, TableContext &ctx) {
     table = table->copy();
 
     ColumnContext column_ctx;
-    add_columns_to_context(table, alias, static_cast<int>(table->get_columns().size()), true, column_ctx);
+    add_columns_to_context(table, alias, 0, static_cast<int>(table->get_columns().size()), true, column_ctx);
     history.push_back({alias, table->get_columns().size()});
 
-    for (auto it = parts.begin() + 1; it != parts.end(); ++it) {
+    for (auto it = parts.begin() + 1; it < parts.end(); ++it) {
         auto subparts = tokenize::clear_parse(*it, "on", true);
         if (subparts.size() != 2) {
             throw syntax_error("Некорректное использование ключевого слова `on`");
@@ -197,8 +191,10 @@ Select::_resolve_table_expr(const std::string &table_str, TableContext &ctx) {
         table = cartesian_product(table, cur_table);
 
         column_ctx.clear();
+        int from = 0;
         for (auto &[al, cnt]: history) {
-            add_columns_to_context(table, al, cnt, false, column_ctx);
+            add_columns_to_context(table, al, from, cnt, false, column_ctx);
+            from += cnt;
         }
 
         auto condition = build_execution_tree_from_expression(subparts[1], column_ctx);

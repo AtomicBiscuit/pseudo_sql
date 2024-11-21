@@ -3,6 +3,20 @@
 
 #include <string>
 
+std::string tokenize::get_word(std::string_view &view) {
+    skip_spaces(view);
+    auto c = view.begin();
+    auto st = view.begin();
+    int cnt = 0;
+    while (c != view.end() and !" \n\r\t "s.contains(*c)) {
+        ++cnt;
+        ++c;
+    }
+    auto temp = std::string(st, st + cnt);
+    view.remove_prefix(cnt + 0);
+    return temp;
+}
+
 std::string tokenize::get_str(std::string_view &view) {
     int cnt = 1;
     auto c = view.begin();

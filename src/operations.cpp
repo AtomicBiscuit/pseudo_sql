@@ -197,6 +197,7 @@ void FieldOperation::resolve(ColumnContext &ctx) {
     if (!ctx.contains(name_)) {
         _throw();
     }
+    type_ = ctx[name_]->type();
     col_ = ctx[name_];
 }
 

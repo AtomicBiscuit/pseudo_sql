@@ -64,6 +64,10 @@ namespace database {
 
         IColumn(Type type, const std::string &name) : type_(type), name_(name) {};
 
+        IColumn(Type type, const std::string &name, bool is_unique, bool is_auto, bool is_def, const value_t &def)
+                : type_(type), name_(name),
+                  default_value_(def), is_default(is_def), is_unique_(is_unique), is_autoinc_(is_auto) {};
+
         IColumn(const IColumn &other) : type_(other.type_), name_(other.name_), is_default(other.is_default),
                                         is_unique_(other.is_unique_), is_autoinc_(other.is_autoinc_) {};
 
@@ -95,6 +99,9 @@ namespace database {
         std::vector<T> rows_;
     public:
         Column(Type type, const std::string &name) : IColumn(type, name) {};
+
+        Column(Type type, const std::string &name, bool is_unique, bool is_auto, bool is_def, const value_t &def)
+                : IColumn(type, name, is_unique, is_auto, is_def, def) {};
 
         Column(const Column &other) : IColumn(other), rows_(other.rows_) {};
 
