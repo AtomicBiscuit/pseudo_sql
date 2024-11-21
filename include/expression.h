@@ -1,15 +1,15 @@
 #pragma once
 
-#include "token.h"
+#include "table.h"
 #include "operations.h"
 
 #include <string>
 #include <sstream>
 
 namespace database {
-    std::unique_ptr<Operation> build_execution_tree_from_expression(const std::string &, ColumnContext &);
-
     std::tuple<std::shared_ptr<Table>, std::string> get_table_from_expression(const std::string &, TableContext &);
+
+    std::unique_ptr<operations::Operation> build_execution_tree_from_expression(const std::string &, ColumnContext &);
 
     class CommandExpression {
     public:

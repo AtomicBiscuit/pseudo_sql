@@ -1,6 +1,6 @@
 #include "../include/operations.h"
 
-using namespace database;
+using namespace database::operations;
 using namespace std::string_literals;
 
 void BinaryOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
@@ -31,7 +31,7 @@ void BinaryOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
 }
 
 
-value_t BinaryOperation::eval(int col) const {
+database::value_t BinaryOperation::eval(int col) const {
     if (type_ == Type::Integer) {
         int v1 = get<int>(arg1_->eval(col));
         int v2 = get<int>(arg2_->eval(col));
@@ -89,7 +89,7 @@ void UnaryOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
 }
 
 
-value_t UnaryOperation::eval(int col) const {
+database::value_t UnaryOperation::eval(int col) const {
     if (type_ == Type::Integer) {
         int v = get<int>(arg_->eval(col));
         if (op_ == '-') {
@@ -125,7 +125,7 @@ void ComparisonOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
 }
 
 
-value_t ComparisonOperation::eval(int col) const {
+database::value_t ComparisonOperation::eval(int col) const {
     if (arg1_->type() == Type::Integer) {
         return _compare<int>(col);
     } else if (arg1_->type() == Type::String) {
@@ -180,7 +180,7 @@ void LenOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
     }
 }
 
-value_t LenOperation::eval(int col) const {
+database::value_t LenOperation::eval(int col) const {
     if (arg_->type() == Type::String) {
         return static_cast<int>(get<std::string>(arg_->eval(col)).size());
     } else if (arg_->type() == Type::Bytes) {
@@ -189,7 +189,7 @@ value_t LenOperation::eval(int col) const {
     _throw();
 }
 
-value_t FieldOperation::eval(int col) const {
+database::value_t FieldOperation::eval(int col) const {
     return col_->get_value(col);
 }
 

@@ -1,75 +1,7 @@
 #include "../include/token.h"
+#include "../include/syexception.h"
+
 #include <string>
-
-using namespace tokenize;
-using namespace std::string_literals;
-
-Token Token::get_operation(std::string_view &c, Type last, bool is_len) {
-    if ("+-!"s.contains(c[0]) and last != Type::Operand and last != Type::UnaryOperation) {
-        char op = c[0];
-        c.remove_prefix(1);
-        return {std::make_unique<database::UnaryOperation>(op), Type::UnaryOperation, 5};
-    } else if ("+-"s.contains(c[0]) and last == Type::Operand) {
-        char op = c[0];
-        c.remove_prefix(1);
-        return {std::make_unique<database::BinaryOperation>(op), Type::BinaryOperation, 1};
-    } else if ("*/%"s.contains(c[0]) and last == Type::Operand) {
-        char op = c[0];
-        c.remove_prefix(1);
-        return {std::make_unique<database::BinaryOperation>(op), Type::BinaryOperation, 2};
-    }
-
-    if (c.starts_with(">=") or c.starts_with("<=") or (c.starts_with("!=") and last == Type::Operand)) {
-        auto op = std::string(c.begin(), c.begin() + 2);
-        c.remove_prefix(2);
-        return {std::make_unique<database::ComparisonOperation>(op), Type::BinaryOperation, 0};
-    } else if (">=<"s.contains(c[0]) and last == Type::Operand) {
-        auto op = std::string(1, c[0]);
-        c.remove_prefix(1);
-        return {std::make_unique<database::ComparisonOperation>(op), Type::BinaryOperation, 0};
-    }
-
-    if (c[0] == '(' and last != Type::Operand) {
-        c.remove_prefix(1);
-        return {nullptr, Type::OpenScope, 10};
-    } else if (c[0] == ')' and last == Type::Operand) {
-        c.remove_prefix(1);
-        return {nullptr, Type::CloseScope, 10};
-    }
-
-    if (c[0] == '|' and last != Type::Operand and !is_len) {
-        c.remove_prefix(1);
-        return {std::make_unique<database::LenOperation>(), Type::Len, 10};
-    } else if (c[0] == '|' and is_len) {
-        c.remove_prefix(1);
-        return {nullptr, Type::Len, 10};
-    } else if ((c.starts_with("&&") or c.starts_with("||") or c.starts_with("^^")) and last == Type::Operand) {
-        char op = c[0];
-        int prior = op == '&' ? -1 : -2;
-        c.remove_prefix(2);
-        return {std::make_unique<database::BinaryOperation>(op), Type::BinaryOperation, prior};
-    }
-
-    if (c[0] == '"' and last != Type::Operand) {
-        return {std::make_unique<database::StringOperation>(get_str(c)), Type::Operand, 20};
-    } else if (c.starts_with("0x") and last != Type::Operand) {
-        return {std::make_unique<database::BytesOperation>(get_bytes(c)), Type::Operand, 20};
-    } else if (isdigit(c[0]) and last != Type::Operand) {
-        return {std::make_unique<database::IntegerOperation>(get_int(c)), Type::Operand, 20};
-    } else if (c.starts_with("false") and not(c.length() >= 6 and (isalnum(c[5]) or c[5] == '.' or c[5] == '_')) and
-               last != Type::Operand) {
-        c.remove_prefix(5);
-        return {std::make_unique<database::BoolOperation>(false), Type::Operand, 20};
-    } else if (c.starts_with("true") and not(c.length() >= 5 and (isalnum(c[4]) or c[4] == '.' or c[4] == '_')) and
-               last != Type::Operand) {
-        c.remove_prefix(4);
-        return {std::make_unique<database::BoolOperation>(true), Type::Operand, 20};
-    } else if (isalpha(c[0]) and last != Type::Operand) {
-        return {std::make_unique<database::FieldOperation>(get_full_name(c)), Type::Operand, 42};
-    }
-
-    throw syntax_error("Неразрешимый в контексте литерал: " + std::string(c));
-}
 
 std::string tokenize::get_str(std::string_view &view) {
     int cnt = 1;
@@ -108,13 +40,6 @@ std::vector<bool> tokenize::get_bytes(std::string_view &view) {
     }
     view.remove_prefix(cnt);
     return b;
-}
-
-Token &Token::operator=(Token &&other) noexcept {
-    oper = std::move(other.oper);
-    prior = other.prior;
-    type = other.type;
-    return *this;
 }
 
 int tokenize::get_int(std::string_view &view) {
@@ -174,4 +99,51 @@ void tokenize::skip_spaces(std::string_view &view, bool reversed) {
 
 bool tokenize::check_empty(const std::string_view &view) {
     return std::ranges::all_of(view, [](char c) { return c == ' ' or c == '\n' or c == '\r' or c == '\t'; });
+}
+
+
+std::vector<std::string> tokenize::clear_parse(const std::string &str, const std::string &del, bool is_separated) {
+    if (del.starts_with('\\') or del.starts_with('"') or del.starts_with('(')) {
+        throw std::domain_error("clear_parse не может обработать разделитель: `" + del + "`");
+    }
+    const std::string sep = " \n\r\t, ";
+    std::string_view view(str);
+    bool is_last_sep = true;
+    bool skip = false;
+    int level = 0;
+
+    std::vector<std::string> res;
+    auto start = view.begin();
+    while (!view.empty()) {
+        if (view[0] == '\\') {
+            view.remove_prefix(1 + (view.size() > 1));
+        } else if (view[0] == '"') {
+            view.remove_prefix(1);
+            skip = !skip;
+            is_last_sep = false;
+        } else if (skip) {
+            view.remove_prefix(1);
+        } else {
+            level += view[0] == '(' ? 1 : (view[0] == ')' ? -1 : 0);
+            if (level == 0 and to_lower(std::string(view)).starts_with(del)) {
+                if (is_separated and is_last_sep and (view.size() == del.size() or sep.contains(view[del.size()]))) {
+                    is_last_sep = false;
+                    res.emplace_back(start, view.begin());
+                    view.remove_prefix(del.size());
+                    start = view.begin();
+                    continue;
+                } else if (!is_separated) {
+                    res.emplace_back(start, view.begin());
+                    view.remove_prefix(del.size());
+                    start = view.begin();
+                    continue;
+                }
+            }
+            if (level == 0 and is_separated)
+                is_last_sep = sep.contains(view[0]);
+            view.remove_prefix(1);
+        }
+    }
+    res.emplace_back(start, view.begin());
+    return res;
 }

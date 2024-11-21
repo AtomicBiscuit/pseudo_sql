@@ -1,13 +1,14 @@
 #pragma once
 
-#include "syexception.h"
-#include "operations.h"
-
 #include <memory>
 #include <map>
 #include <vector>
 #include <ranges>
 #include <algorithm>
+#include <list>
+#include <string>
+#include <utility>
+#include <iostream>
 
 using std::string_literals::operator ""s;
 
@@ -26,24 +27,16 @@ namespace tokenize {
 
     std::string get_name(std::string_view &view);
 
-    enum class Type {
-        UnaryOperation, BinaryOperation,
-        Operand,
-        OpenScope, CloseScope,
-        Len
-    };
+    std::vector<std::string> clear_parse(const std::string &, const std::string &, bool);
 
-    struct Token {
-        std::unique_ptr<database::Operation> oper;
-        Type type;
-        int prior;
 
-        Token(std::unique_ptr<database::Operation> s, Type t, int prior) : oper(std::move(s)), type(t), prior(prior) {};
+    inline std::string to_lower(std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return tolower(c); });
+        return s;
+    }
 
-        Token(Token &&other) noexcept: oper(std::move(other.oper)), type(other.type), prior(other.prior) {};
+    inline std::string to_lower(std::string_view s) {
+        return to_lower(std::string(s));
+    }
 
-        Token &operator=(Token &&other) noexcept;
-
-        static Token get_operation(std::string_view &c, Type last, bool is_len);
-    };
 }

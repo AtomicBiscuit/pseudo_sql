@@ -1,13 +1,21 @@
 #pragma once
 
 #include "table.h"
+#include "syexception.h"
 
 #include <map>
 #include <vector>
 #include <string>
 #include <memory>
+#include <ranges>
+#include <algorithm>
+#include <list>
+#include <utility>
+#include <iostream>
+#include <tuple>
+#include <stack>
 
-namespace database {
+namespace database::operations {
     class Operation {
         virtual void _throw() const = 0;
 
@@ -147,5 +155,26 @@ namespace database {
         const std::string &name() const { return name_; };
 
         value_t eval(int col) const override;
+    };
+
+    enum class OperationType {
+        UnaryOperation, BinaryOperation,
+        Operand,
+        OpenScope, CloseScope,
+        Len
+    };
+
+    struct PrioritizedOperation {
+        std::unique_ptr<Operation> oper_;
+        OperationType type_;
+        int prior_;
+
+        PrioritizedOperation(std::unique_ptr<Operation> oper, OperationType type, int prior);
+
+        PrioritizedOperation(PrioritizedOperation &&other) noexcept;
+
+        PrioritizedOperation &operator=(PrioritizedOperation &&other) noexcept;
+
+        static PrioritizedOperation get_operation(std::string_view &view, OperationType last, bool is_len);
     };
 }
