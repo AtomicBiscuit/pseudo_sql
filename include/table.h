@@ -4,11 +4,13 @@
 
 #include <variant>
 #include <vector>
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
 #include <sstream>
 #include <unordered_set>
+#include <optional>
 
 namespace database {
     enum class Type {
@@ -57,7 +59,7 @@ namespace database {
         Type type_;
         std::string name_;
         value_t default_value_;
-        bool is_default = false;
+        bool is_default_ = false;
         bool is_unique_ = false;
         bool is_autoinc_ = false;
     public:
@@ -66,13 +68,17 @@ namespace database {
 
         IColumn(Type type, const std::string &name, bool is_unique, bool is_auto, bool is_def, const value_t &def)
                 : type_(type), name_(name),
-                  default_value_(def), is_default(is_def), is_unique_(is_unique), is_autoinc_(is_auto) {};
+                  default_value_(def), is_default_(is_def), is_unique_(is_unique), is_autoinc_(is_auto) {
+            if (is_autoinc_ and not holds_alternative<int>(default_value_)) {
+                default_value_ = 0;
+            }
+        };
 
-        IColumn(const IColumn &other) : type_(other.type_), name_(other.name_), is_default(other.is_default),
+        IColumn(const IColumn &other) : type_(other.type_), name_(other.name_), is_default_(other.is_default_),
                                         is_unique_(other.is_unique_), is_autoinc_(other.is_autoinc_) {};
 
         IColumn(IColumn &&other) noexcept: type_(other.type_), name_(std::move(other.name_)),
-                                           is_default(other.is_default), is_unique_(other.is_unique_),
+                                           is_default_(other.is_default_), is_unique_(other.is_unique_),
                                            is_autoinc_(other.is_autoinc_) {};
 
         virtual ~IColumn() = default;
@@ -88,6 +94,8 @@ namespace database {
         virtual void apply_changes(const std::vector<int> &) = 0;
 
         virtual std::shared_ptr<IColumn> copy_apply_changes(const std::vector<int> &, const std::string &) const = 0;
+
+        virtual void add(std::optional<value_t> &&) = 0;
 
         virtual size_t size() const = 0;
 
@@ -138,9 +146,8 @@ namespace database {
         void apply_changes(const std::vector<int> &rows) override {
             std::vector<T> res;
             res.reserve(rows.size());
-            int ind = 0;
             for (auto i: rows) {
-                res[ind++] = std::move(rows_[i]);
+                res.push_back(std::move(rows_[i]));
             }
             set_rows(std::move(res));
         }
@@ -149,20 +156,34 @@ namespace database {
         copy_apply_changes(const std::vector<int> &rows, const std::string &name) const override {
             std::vector<T> res;
             res.reserve(rows.size());
-            int ind = 0;
             for (auto i: rows) {
-                res[ind++] = rows_[i];
+                res.push_back(rows_[i]);
             }
             auto temp = std::make_shared<Column<T>>(type_, name);
             temp->set_rows(std::move(res));
             return temp;
         }
 
+        void add(std::optional<value_t> &&val) override {
+            value_t new_val;
+            if (!val.has_value()) {
+                EXEC_ASSERT(is_default_ or is_autoinc_, "Не указано значение для столбца: " + name_);
+                new_val = default_value_;
+                if (is_autoinc_) {
+                    ++get<int>(default_value_);
+                }
+            } else {
+                new_val = std::move(val.value());
+            }
+            EXEC_ASSERT(not is_unique_ or std::find(rows_.begin(), rows_.end(), get<T>(new_val)) == rows_.end(),
+                        "Добавление значения `" + value_to_string(new_val, type_) + "` в столбец " + name_ +
+                        " нарушает требование уникальности");
+            rows_.push_back(std::move(get<T>(new_val)));
+        }
+
         virtual size_t size() const override { return rows_.size(); };
 
-        value_t get_value(int row) const override {
-            return rows_[row];
-        }
+        value_t get_value(int row) const override { return rows_[row]; }
     };
 
     class Table {
@@ -179,6 +200,13 @@ namespace database {
 
         void add_column(const std::shared_ptr<IColumn> &col) { cols_.push_back(col); }
 
+        void add_row(std::vector<std::optional<value_t>> &&row) {
+            int i = 0;
+            for (auto &col: cols_) {
+                col->add(std::move(row[i++]));
+            }
+        }
+
         void check_valid() const;
 
         std::shared_ptr<Table> copy() const;
@@ -188,7 +216,7 @@ namespace database {
     using ColumnContext = std::map<std::string, std::shared_ptr<IColumn>>;
 
     struct TableContext {
-        std::map<std::string, std::shared_ptr<database::Table>> tables;
-        int number = 1;
+        std::map<std::string, std::shared_ptr<database::Table>> &tables;
+        int number;
     };
 }

@@ -13,11 +13,13 @@ std::string tokenize::get_word(std::string_view &view) {
         ++c;
     }
     auto temp = std::string(st, st + cnt);
-    view.remove_prefix(cnt + 0);
+    view.remove_prefix(cnt);
     return temp;
 }
 
 std::string tokenize::get_str(std::string_view &view) {
+    skip_spaces(view);
+    SYNTAX_ASSERT(view.starts_with("\""), "Ожидался литерал типа string, найдено: " + std::string(view));
     int cnt = 1;
     auto c = view.begin();
     c++;
@@ -30,15 +32,16 @@ std::string tokenize::get_str(std::string_view &view) {
         }
         ++cnt;
     }
-    if (c == view.end()) {
-        throw syntax_error("Не найден конец строки");
-    }
+    SYNTAX_ASSERT(c != view.end(), "Не найден конец строки");
+
     auto temp = std::string(view.begin() + 1, view.begin() + cnt);
     view.remove_prefix(cnt + 1);
     return temp;
 }
 
 std::vector<bool> tokenize::get_bytes(std::string_view &view) {
+    skip_spaces(view);
+    SYNTAX_ASSERT(view.starts_with("0x"), "Ожидался литерал типа bytes, найдено: " + std::string(view));
     int cnt = 2;
     std::vector<bool> b;
     auto c = view.begin() + 2;
@@ -57,6 +60,8 @@ std::vector<bool> tokenize::get_bytes(std::string_view &view) {
 }
 
 int tokenize::get_int(std::string_view &view) {
+    skip_spaces(view);
+    SYNTAX_ASSERT(!view.empty() and isdigit(view[0]), "Ожидался литерал типа int32, найдено: " + std::string(view));
     int cnt = 0;
     int b = 0;
     auto c = view.begin();
@@ -70,6 +75,7 @@ int tokenize::get_int(std::string_view &view) {
 }
 
 std::string tokenize::get_full_name(std::string_view &view) {
+    skip_spaces(view);
     if (view.empty() or !isalpha(view[0])) {
         return "";
     }
@@ -85,6 +91,7 @@ std::string tokenize::get_full_name(std::string_view &view) {
 }
 
 std::string tokenize::get_name(std::string_view &view) {
+    skip_spaces(view);
     if (view.empty() or !isalpha(view[0])) {
         return "";
     }
@@ -116,6 +123,12 @@ bool tokenize::check_empty(const std::string_view &view) {
 }
 
 
+/// Делит str на слова по разделителю del, но только есть del не находится в тексте "...del..."
+/// и находится на 0 уровне вложенности
+/// \param str строка для деления
+/// \param del разделитель
+/// \param is_separated если true, то требуется чтобы разделить был отделён с двух сторон кем-то из " \n\r\t,"
+/// \return Вектор найденных слов без разделителей
 std::vector<std::string> tokenize::clear_parse(const std::string &str, const std::string &del, bool is_separated) {
     if (del.starts_with('\\') or del.starts_with('"') or del.starts_with('(')) {
         throw std::domain_error("clear_parse не может обработать разделитель: `" + del + "`");

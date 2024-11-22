@@ -1,5 +1,4 @@
 #include <tuple>
-#include <stack>
 #include "../include/expression.h"
 #include "../include/token.h"
 #include "../include/select.h"
@@ -12,9 +11,7 @@ using namespace std::string_literals;
 static void pop_safe(std::vector<PrioritizedOperation> &stack,
                      std::vector<std::unique_ptr<Operation>> &stack_dest,
                      const std::string &err) {
-    if (stack.empty()) {
-        throw syntax_error(err);
-    }
+    SYNTAX_ASSERT(!stack.empty(), err);
     stack_dest.push_back(std::move(stack.back().oper_));
     stack.pop_back();
 }
@@ -26,40 +23,30 @@ database::get_table_from_expression(const std::string &in, TableContext &ctx) {
     std::string alias;
     std::shared_ptr<Table> table;
     tokenize::skip_spaces(view);
-    if (view.empty()) {
-        throw syntax_error("Ожидалось табличное выражение");
-    }
+    SYNTAX_ASSERT(!view.empty(), "Ожидалось табличное выражение");
 
     auto parts = tokenize::clear_parse(std::string(view), "as", true);
-    auto first_view = std::string_view(parts[0]);
-    if (parts.size() > 2) {
-        throw syntax_error("Обнаружено несколько вхождений ключевого слова `as`");
-    }
-    if (view[0] != '(') {
-        alias = tokenize::get_name(first_view);
-        if (!ctx.tables.contains(alias)) {
-            throw execution_error("Таблица `" + alias + "` не найдена");
-        }
+    auto table_view = std::string_view(parts[0]);
+    SYNTAX_ASSERT(parts.size() <= 2, "Обнаружено несколько вхождений ключевого слова `as`");
+
+    if (table_view[0] != '(') {
+        alias = tokenize::get_name(table_view);
+        EXEC_ASSERT(ctx.tables.contains(alias), "Таблица `" + alias + "` не найдена");
         table = ctx.tables[alias];
     } else {
-        first_view.remove_prefix(1);
-        tokenize::skip_spaces(first_view, true);
+        table_view.remove_prefix(1);
+        tokenize::skip_spaces(table_view, true);
+        SYNTAX_ASSERT(table_view.ends_with(')'), "Невозможная скобочная последовательность, возможно пропущена`)`");
 
-        if (!first_view.ends_with(')')) {
-            throw syntax_error("Невозможная скобочная последовательность, возможно пропущена`)`");
-        }
-        first_view.remove_suffix(1);
-        table = Select().parse_and_execute(std::string(first_view), ctx);
+        table_view.remove_suffix(1);
+
+        table = Select().parse_and_execute(std::string(table_view), ctx);
         alias = table->name();
     }
     if (parts.size() == 2) {
         auto view_alias = std::string_view(parts[1]);
-        tokenize::skip_spaces(view_alias);
         alias = tokenize::get_name(view_alias);
-
-        if (!tokenize::check_empty(view_alias)) {
-            throw syntax_error("Непредвиденный литерал `" + std::string(view_alias) + "`");
-        }
+        SYNTAX_ASSERT(tokenize::check_empty(view_alias), "Непредвиденный литерал `" + std::string(view_alias) + "`");
     }
     return {table, alias};
 }
@@ -88,13 +75,10 @@ database::build_execution_tree_from_expression(const std::string &in, ColumnCont
         } else if (cur.type_ == OperationType::Len and is_len) {
             is_len = false;
             cur.type_ = OperationType::Operand;
-            if (ops.empty()) {
-                throw syntax_error("Отсутствует аргумент оператора `Len`");
-            }
+            SYNTAX_ASSERT(!ops.empty(), "Отсутствует аргумент оператора `Len`");
             while (ops.back().type_ != OperationType::Len) {
-                if (ops.back().type_ == OperationType::OpenScope) {
-                    throw syntax_error("Некорректный порядок скобок и оператора длины `|`");
-                }
+                SYNTAX_ASSERT(ops.back().type_ != OperationType::OpenScope,
+                              "Некорректный порядок скобок и оператора длины `|`");
                 pop_safe(ops, post, "Невозможная скобочная последовательность, возможно не хватает `|`");
             }
             pop_safe(ops, post, "Невозможная скобочная последовательность, возможно не хватает `|`");
@@ -105,14 +89,12 @@ database::build_execution_tree_from_expression(const std::string &in, ColumnCont
             ops.push_back(std::move(cur));
         } else if (cur.type_ == OperationType::CloseScope) {
             cur.type_ = OperationType::Operand;
-            if (ops.empty()) {
-                throw syntax_error("Обнаружено пустое подвыражение");
-            }
+            SYNTAX_ASSERT(!ops.empty(), "Невозможная скобочная последовательность, возможно не хватает `(`");
             while (ops.back().type_ != OperationType::OpenScope) {
-                if (ops.back().type_ == OperationType::Len) {
-                    throw syntax_error("Некорректный порядок скобок и оператора длины `|`");
-                }
+                SYNTAX_ASSERT(ops.back().type_ != OperationType::Len,
+                              "Некорректный порядок скобок и оператора длины `|`");
                 pop_safe(ops, post, "Невозможная скобочная последовательность, возможно не хватает `(`");
+                SYNTAX_ASSERT(!ops.empty(), "Невозможная скобочная последовательность, возможно не хватает `(`");
             }
             ops.pop_back();
         } else if (cur.type_ == OperationType::BinaryOperation or
@@ -124,24 +106,19 @@ database::build_execution_tree_from_expression(const std::string &in, ColumnCont
             }
             ops.push_back(std::move(cur));
         } else {
-            throw syntax_error("Непредвиденная ошибка");
+            SYNTAX_ASSERT(0, "Непредвиденная ошибка");
         }
     }
     while (not ops.empty()) {
-        if (ops.back().type_ == OperationType::OpenScope or
-            ops.back().type_ == OperationType::Len) {
-            throw syntax_error("Невозможная скобочная последовательность, возможно не хватает `)` или '|'");
-        }
+        SYNTAX_ASSERT(ops.back().type_ != OperationType::OpenScope and ops.back().type_ != OperationType::Len,
+                      "Невозможная скобочная последовательность, возможно не хватает `)` или '|'");
         pop_safe(ops, post, "Непредвиденная ошибка");
     }
-    if (post.empty()) {
-        throw syntax_error("Найдено пустое выражение");
-    }
+    SYNTAX_ASSERT(!post.empty(), "Найдено пустое выражение");
+
     std::unique_ptr<Operation> result = std::move(post.back());
     post.pop_back();
     result->bind(post);
-    if (not post.empty()) {
-        throw syntax_error("Невалидное число операндов в выражении");
-    }
+    SYNTAX_ASSERT(post.empty(), "Невалидное число операндов в выражении");
     return result;
 }

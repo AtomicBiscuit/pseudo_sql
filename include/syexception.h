@@ -2,6 +2,9 @@
 
 #include <stdexcept>
 
+#define SYNTAX_ASSERT(cond, text) do{ if(!(cond)) throw syntax_error((text)); }while(0)
+#define EXEC_ASSERT(cond, text) do{ if(!(cond))throw execution_error((text)); }while(0)
+
 class syntax_error : std::exception {
 private:
     std::string what_;

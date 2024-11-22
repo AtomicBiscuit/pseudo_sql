@@ -37,7 +37,7 @@ database::value_t BinaryOperation::eval(int col) const {
         int v2 = get<int>(arg2_->eval(col));
         switch (op_) {
             case '+':
-                return v1 + v2;
+                return v2 + v1;
             case '-':
                 return v2 - v1;
             case '*':
@@ -54,14 +54,14 @@ database::value_t BinaryOperation::eval(int col) const {
         bool v2 = get<bool>(arg2_->eval(col));
         switch (op_) {
             case '&':
-                return static_cast<bool>(v1 && v2);
+                return static_cast<bool>(v2 && v1);
             case '^':
                 return static_cast<bool>(v2 ^ v1);
             case '|':
                 return static_cast<bool>(v2 || v1);
         }
     }
-    return get<std::string>(arg1_->eval(col)) + get<std::string>(arg2_->eval(col));
+    return get<std::string>(arg2_->eval(col)) + get<std::string>(arg1_->eval(col));
 }
 
 void BinaryOperation::_throw() const {

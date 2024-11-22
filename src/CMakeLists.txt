@@ -8,4 +8,5 @@ add_library(
         table.cpp
         create.cpp
         prior_oper.cpp
+        insert.cpp
 )

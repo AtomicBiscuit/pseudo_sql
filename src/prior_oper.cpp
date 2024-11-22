@@ -72,7 +72,7 @@ PrioritizedOperation PrioritizedOperation::get_operation(std::string_view &view,
         return {std::make_unique<FieldOperation>(tokenize::get_full_name(view)), OperationType::Operand, 42};
     }
 
-    throw syntax_error("Неразрешимый в контексте литерал: " + std::string(view));
+    SYNTAX_ASSERT(0, "Неразрешимый в контексте литерал: " + std::string(view));
 }
 
 PrioritizedOperation &PrioritizedOperation::operator=(PrioritizedOperation &&other) noexcept {
