@@ -3,9 +3,6 @@ project(pseudo_sql)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_compile_options("-Wall")
-add_compile_options("-pedantic")
-
 add_executable(pseudo_sql main.cpp)
 
 add_subdirectory(src)

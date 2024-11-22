@@ -9,7 +9,7 @@ void print_table(std::shared_ptr<database::Table> &table) {
     if (!table) {
         return;
     }
-    int width = 24;
+    int width = 20;
     int size = table->get_columns().empty() ? 0 : table->get_columns()[0]->size();
     std::cout << "\033[1m";
     std::cout << std::setw((width + 1) * table->get_columns().size() + 2) << std::setfill('-') << '\n';
@@ -52,7 +52,7 @@ insert (, "Alice",    false, 0xabc) to table;
 
 insert (100, "Handra",    false, 0xfeed) to table;
 
-select a.b + "__joined__" + b.name as b_join_name, a.c, a.c / b.i_col, b.i_col, b.name, b.state, b.vars
+select a.b + "____" + b.name as b_join_name, a.c, a.c / b.i_col, b.i_col, b.name, b.state, b.vars
 from (select "a" + "_" + name as b, 7777 + table.i_col as c from table where true) as a
 	join table as b on true
 where true;)";
