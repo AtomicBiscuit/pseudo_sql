@@ -19,6 +19,7 @@ void Table::check_valid() const {
     EXEC_ASSERT(names.size() == cols_.size(), "Обнаружены одинаковые имена столбцов");
 }
 
+/*
 std::shared_ptr<Table> Table::copy() const {
     auto res = std::make_shared<Table>(name_);
     for (auto &col: cols_) {
@@ -26,5 +27,6 @@ std::shared_ptr<Table> Table::copy() const {
     }
     return res;
 }
+ */
 
 

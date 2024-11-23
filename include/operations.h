@@ -158,7 +158,7 @@ namespace database::operations {
     };
 
     enum class OperationType {
-        UnaryOperation, BinaryOperation,
+        Unary, Binary,
         Operand,
         OpenScope, CloseScope,
         Len

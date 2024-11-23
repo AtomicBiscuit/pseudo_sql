@@ -1,7 +1,8 @@
 #include "../include/token.h"
-#include "../include/syexception.h"
 
 #include <string>
+
+using namespace database;
 
 std::string tokenize::get_word(std::string_view &view) {
     skip_spaces(view);
@@ -116,6 +117,22 @@ void tokenize::skip_spaces(std::string_view &view, bool reversed) {
     while (!view.empty() and " \n\r\t"s.contains(view.back())) {
         view.remove_suffix(1);
     }
+}
+
+value_t tokenize::get_value(std::string_view &view, Type type) {
+    value_t res;
+    if (type == Type::Integer) {
+        res = tokenize::get_int(view);
+    } else if (type == database::Type::Boolean) {
+        auto word = tokenize::get_word(view);
+        SYNTAX_ASSERT(word == "true" or word == "false", "Ожидался литерал типа bool, найден: " + word);
+        res = static_cast<bool>(word == "true");
+    } else if (type == Type::Bytes) {
+        res = tokenize::get_bytes(view);
+    } else if (type == Type::String) {
+        res = tokenize::get_str(view);
+    }
+    return res;
 }
 
 bool tokenize::check_empty(const std::string_view &view) {

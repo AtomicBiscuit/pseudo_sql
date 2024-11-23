@@ -8,32 +8,37 @@ using namespace std::string_literals;
 using namespace database;
 
 
-std::tuple<bool, bool, bool> Create::_parse_attributes(const std::string &attrs_str) {
-    auto attrs = tokenize::clear_parse(attrs_str, ",", false);
-    bool is_unique = false, is_key = false, is_auto = false;
+std::tuple<bool, bool, bool> Create::_parse_attributes(std::string_view &attrs_view) {
+    tokenize::skip_spaces(attrs_view);
+    if (!attrs_view.starts_with("{")) {
+        return {false, false, false};
+    }
+    attrs_view.remove_prefix(1);
+
+    auto parts = tokenize::clear_parse(std::string(attrs_view), "}", false);
+    SYNTAX_ASSERT(parts.size() == 2, "Невозможная комбинация `{` и `}`");
+
+    auto attrs = tokenize::clear_parse(parts[0], ",", false);
+    bool is_auto = false, is_key = false, is_unique = false;
     for (const auto &attr: attrs) {
-        auto v_attr = std::string_view(attr);
-        auto word = tokenize::to_lower(tokenize::get_word(v_attr));
-        SYNTAX_ASSERT(tokenize::check_empty(v_attr), "Непредвиденный литерал: " + std::string(v_attr));
+        auto attr_view = std::string_view(attr);
+        auto word = tokenize::to_lower(tokenize::get_word(attr_view));
         SYNTAX_ASSERT(word == "key" or word == "unique" or word == "autoincrement", "Неизвестный атрибут: " + word);
-        is_unique |= word == "unique";
-        is_key |= word == "key";
+        SYNTAX_ASSERT(tokenize::check_empty(attr_view), "Непредвиденный литерал: " + std::string(attr_view));
         is_auto |= word == "autoincrement";
+        is_key |= word == "key";
+        is_unique |= word == "unique";
     }
     is_unique |= is_key;
-    return {is_unique, is_key, is_auto};
+
+    attrs_view.remove_prefix(parts[0].size() + 1);
+    return {is_auto, is_key, is_unique};
 }
 
 std::shared_ptr<IColumn> Create::_parse_and_create_col(std::string_view &view) {
-    bool is_unique = false, is_key = false, is_def = false, is_auto = false;
-    tokenize::skip_spaces(view);
-    if (view.starts_with("{")) {
-        view.remove_prefix(1);
-        auto parts = tokenize::clear_parse(std::string(view), "}", false);
-        SYNTAX_ASSERT(parts.size() == 2, "Непредвиденное появление `}`");
-        std::tie(is_unique, is_key, is_auto) = _parse_attributes(parts[0]);
-        view.remove_prefix(parts[0].size() + 1);
-    }
+    bool is_def = false;
+    auto [is_auto, is_key, is_unique] = _parse_attributes(view);
+
     auto name = tokenize::get_name(view);
     SYNTAX_ASSERT(!name.empty(), "Ожидалось имя столбца");
 
@@ -42,7 +47,6 @@ std::shared_ptr<IColumn> Create::_parse_and_create_col(std::string_view &view) {
     view.remove_prefix(1);
 
     auto type = tokenize::to_lower(tokenize::get_name(view));
-    value_t def;
 
     tokenize::skip_spaces(view);
     is_def = view.starts_with("=");
@@ -50,27 +54,22 @@ std::shared_ptr<IColumn> Create::_parse_and_create_col(std::string_view &view) {
 
     std::shared_ptr<IColumn> col;
     if (type == "integer") {
-        if (is_def) {
-            def = tokenize::get_int(view);
-        }
-        col = std::make_shared<Column<int>>(Type::Integer, name, is_unique, is_auto, is_def, def);
+        col = std::make_shared<Column<int>>(Type::Integer, name, is_unique, is_auto, is_def,
+                                            is_def ? tokenize::get_int(view) : 0);
     } else if (!is_auto and type == "string") {
-        if (is_def) {
-            def = tokenize::get_str(view);
-        }
-        col = std::make_shared<Column<std::string>>(Type::String, name, is_unique, is_auto, is_def, def);
+        col = std::make_shared<Column<std::string>>(Type::String, name, is_unique, is_auto, is_def,
+                                                    is_def ? tokenize::get_str(view) : "");
     } else if (!is_auto and type == "bytes") {
-        if (is_def) {
-            def = tokenize::get_bytes(view);
-        }
-        col = std::make_shared<Column<std::vector<bool>>>(Type::Bytes, name, is_unique, is_auto, is_def, def);
+        col = std::make_shared<Column<std::vector<bool>>>(Type::Bytes, name, is_unique, is_auto, is_def,
+                                                          is_def ? tokenize::get_bytes(view) : std::vector<bool>());
     } else if (!is_auto and type == "bool") {
+        bool default_value = false;
         if (is_def) {
             auto temp = tokenize::get_word(view);
             SYNTAX_ASSERT(temp == "true" or temp == "false", "Ожидался литерал типа bool, найден: " + temp);
-            def = temp == "true";
+            default_value = temp == "true";
         }
-        col = std::make_shared<Column<bool>>(Type::Boolean, name, is_unique, is_auto, is_def, def);
+        col = std::make_shared<Column<bool>>(Type::Boolean, name, is_unique, is_auto, is_def, default_value);
     } else {
         EXEC_ASSERT(0, "Неизвестная комбинация типа и атрибутов");
     }
@@ -83,15 +82,15 @@ std::shared_ptr<IColumn> Create::_parse_and_create_col(std::string_view &view) {
     return col;
 }
 
-std::shared_ptr<Table> Create::parse_and_execute(const std::string &str, TableContext &ctx) const {
+Table Create::parse_and_execute(const std::string &str, TableContext &ctx) const {
     std::string_view view(str);
-    std::string temp;
+    std::string word;
 
-    SYNTAX_ASSERT(tokenize::to_lower(temp = tokenize::get_word(view)) == "create",
-                  "Ожидалось ключевое слово `create`, найдено: " + temp);
+    SYNTAX_ASSERT(tokenize::to_lower(word = tokenize::get_word(view)) == "create",
+                  "Ожидалось ключевое слово `create`, найдено: " + word);
 
-    SYNTAX_ASSERT(tokenize::to_lower(temp = tokenize::get_word(view)) == "table",
-                  "Ожидалось ключевое слово `table`, найдено: " + temp);
+    SYNTAX_ASSERT(tokenize::to_lower(word = tokenize::get_word(view)) == "table",
+                  "Ожидалось ключевое слово `table`, найдено: " + word);
 
     auto name = tokenize::get_name(view);
     SYNTAX_ASSERT(!name.empty(), "Невозможное имя таблицы: " + std::string(view));
@@ -105,14 +104,19 @@ std::shared_ptr<Table> Create::parse_and_execute(const std::string &str, TableCo
     SYNTAX_ASSERT(view.ends_with(")"), "Ожидалась `)`");
     view.remove_suffix(1);
 
-    auto table = std::make_shared<Table>(name);
-    std::shared_ptr<IColumn> col;
+    std::vector<std::shared_ptr<IColumn>> columns;
     do {
-        table->add_column(_parse_and_create_col(view));
+        columns.push_back(_parse_and_create_col(view));
     } while (!view.empty());
 
-    table->check_valid();
+    return create(name, columns, ctx);
+}
 
-    ctx.tables.emplace(table->name(), table);
+Table Create::create(const std::string &name, const std::vector<std::shared_ptr<IColumn>> &columns, TableContext &ctx) {
+    auto table = Table(name);
+    for (const auto &col: columns) {
+        table.add_column(col);
+    }
+    ctx.tables.emplace(table.name(), table);
     return table;
 }

@@ -91,9 +91,9 @@ namespace database {
 
         virtual std::shared_ptr<IColumn> multicopy(size_t, bool) const = 0;
 
-        virtual void apply_changes(const std::vector<int> &) = 0;
+        virtual void apply_delete(const std::vector<int> &) = 0;
 
-        virtual std::shared_ptr<IColumn> copy_apply_changes(const std::vector<int> &, const std::string &) const = 0;
+        virtual std::shared_ptr<IColumn> copy_apply_delete(const std::vector<int> &, const std::string &) const = 0;
 
         virtual void add(std::optional<value_t> &&) = 0;
 
@@ -116,14 +116,11 @@ namespace database {
         Column(Column &&other) noexcept: IColumn(std::move(other)), rows_(std::move(other.rows_)) {};
 
 
-        void set_rows(std::vector<T> &&rows) {
-            rows_ = std::move(rows);
-        }
+        void set_rows(std::vector<T> &&rows) { rows_ = std::move(rows); }
 
         void check_valid() const override {
-            if (is_unique_ and std::unordered_set<value_t>(rows_.begin(), rows_.end()).size() != rows_.size()) {
-                throw execution_error("Нарушено требование unique столбца " + name_);
-            }
+            EXEC_ASSERT(!is_unique_ or std::unordered_set<value_t>(rows_.begin(), rows_.end()).size() == rows_.size(),
+                        "Нарушено требование unique столбца " + name_);
         }
 
         std::shared_ptr<IColumn> multicopy(size_t cnt, bool is_seq) const override {
@@ -143,7 +140,7 @@ namespace database {
             return std::move(res);
         }
 
-        void apply_changes(const std::vector<int> &rows) override {
+        void apply_delete(const std::vector<int> &rows) override {
             std::vector<T> res;
             res.reserve(rows.size());
             for (auto i: rows) {
@@ -153,7 +150,7 @@ namespace database {
         }
 
         std::shared_ptr<IColumn>
-        copy_apply_changes(const std::vector<int> &rows, const std::string &name) const override {
+        copy_apply_delete(const std::vector<int> &rows, const std::string &name) const override {
             std::vector<T> res;
             res.reserve(rows.size());
             for (auto i: rows) {
@@ -194,9 +191,33 @@ namespace database {
 
         explicit Table(const std::string &name) : name_(name) {};
 
-        std::vector<std::shared_ptr<IColumn>> get_columns() { return cols_; }
+        Table(const Table &other) : name_(other.name_), cols_(other.cols_) {};
 
-        std::string name() { return name_; }
+        Table(Table &&other) noexcept: name_(std::move(other.name_)), cols_(std::move(other.cols_)) {};
+
+        Table &operator=(const Table &other) {
+            if (&other == this) {
+                return *this;
+            }
+            name_ = other.name_;
+            cols_ = other.cols_;
+            return *this;
+        }
+
+        Table &operator=(Table &&other) noexcept {
+            if (&other == this) {
+                return *this;
+            }
+            name_ = std::move(other.name_);
+            cols_ = std::move(other.cols_);
+        }
+
+
+        std::vector<std::shared_ptr<IColumn>> get_columns() const { return cols_; }
+
+        const std::string &name() const { return name_; }
+
+        void set_name(std::string new_name) { name_ = std::move(new_name); }
 
         void add_column(const std::shared_ptr<IColumn> &col) { cols_.push_back(col); }
 
@@ -209,14 +230,14 @@ namespace database {
 
         void check_valid() const;
 
-        std::shared_ptr<Table> copy() const;
+        // std::shared_ptr<Table> copy() const;
     };
 
 
     using ColumnContext = std::map<std::string, std::shared_ptr<IColumn>>;
 
     struct TableContext {
-        std::map<std::string, std::shared_ptr<database::Table>> &tables;
+        std::map<std::string, database::Table> &tables;
         int number;
     };
 }

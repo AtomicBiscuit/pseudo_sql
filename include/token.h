@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../include/table.h"
+
 #include <memory>
 #include <map>
 #include <vector>
@@ -25,9 +27,11 @@ namespace tokenize {
 
     int get_int(std::string_view &);
 
-    std::string get_full_name(std::string_view &view);
+    std::string get_full_name(std::string_view &);
 
-    std::string get_name(std::string_view &view);
+    std::string get_name(std::string_view &);
+
+    database::value_t get_value(std::string_view &, database::Type);
 
     std::vector<std::string> clear_parse(const std::string &, const std::string &, bool);
 

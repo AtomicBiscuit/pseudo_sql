@@ -4,7 +4,7 @@
 using namespace tokenize;
 
 
-std::shared_ptr<database::Table> DataBase::execute(const std::string &target) {
+database::Table DataBase::execute(const std::string &target) {
     std::string_view view(target);
     auto comma = _get_command(view);
     database::TableContext ctx{tables_, 0};
