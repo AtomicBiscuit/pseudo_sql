@@ -9,4 +9,5 @@ add_library(
         create.cpp
         prior_oper.cpp
         insert.cpp
+        update.cpp
 )

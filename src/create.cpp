@@ -1,5 +1,6 @@
 #include "../include/create.h"
 #include "../include/token.h"
+#include "../include/column.h"
 
 #include <ranges>
 

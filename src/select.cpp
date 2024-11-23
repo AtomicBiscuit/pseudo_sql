@@ -88,20 +88,6 @@ Select::_resolve_column_expr(const std::string &cols, ColumnContext &ctx) {
     return columns;
 }
 
-void
-Select::add_columns_to_context(Table &table, const std::string &name, int from, int count, bool shorty,
-                               ColumnContext &ctx) {
-    auto cols = table.get_columns();
-    for (auto col: std::views::counted(cols.begin() + from, count)) {
-        auto full_name = name + "." + col->name();
-        EXEC_ASSERT(!ctx.contains(full_name), "Неоднозначно определен столбец `" + full_name + "`");
-        ctx[full_name] = col;
-        if (shorty) {
-            ctx.emplace(col->name(), col);
-        }
-    }
-}
-
 void Select::select(Table &table, std::unique_ptr<Operation> cond) {
     std::vector<int> row_nums;
     int rows = table.get_columns().empty() ? 0 : table.get_columns()[0]->size();
@@ -155,7 +141,7 @@ std::tuple<Table, ColumnContext> Select::_resolve_table_expr(const std::string &
     auto [table, alias] = get_table_from_expression(parts[0], ctx);
 
     ColumnContext column_ctx;
-    add_columns_to_context(table, alias, 0, table.get_columns().size(), true, column_ctx);
+    table.add_columns_to_context(alias, column_ctx, 0, table.get_columns().size(), true);
     history.push_back({alias, table.get_columns().size()});
 
     for (auto it = parts.begin() + 1; it < parts.end(); ++it) {
@@ -170,7 +156,7 @@ std::tuple<Table, ColumnContext> Select::_resolve_table_expr(const std::string &
         column_ctx.clear();
         int from = 0;
         for (auto &[al, cnt]: history) {
-            add_columns_to_context(table, al, from, cnt, false, column_ctx);
+            table.add_columns_to_context(al, column_ctx, from, cnt, false);
             from += cnt;
         }
         auto condition = build_execution_tree_from_expression(subparts[1], column_ctx);

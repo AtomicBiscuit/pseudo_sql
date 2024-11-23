@@ -1,4 +1,5 @@
 #include "../include/token.h"
+#include "../include/column.h"
 
 #include <string>
 
@@ -190,4 +191,13 @@ std::vector<std::string> tokenize::clear_parse(const std::string &str, const std
     }
     res.emplace_back(start, view.begin());
     return res;
+}
+
+std::string tokenize::to_lower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return tolower(c); });
+    return s;
+}
+
+std::string tokenize::to_lower(std::string_view s) {
+    return to_lower(std::string(s));
 }

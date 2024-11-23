@@ -23,9 +23,5 @@ namespace database {
         _resolve_column_expr(const std::string &, ColumnContext &);
 
         static std::tuple<Table, ColumnContext> _resolve_table_expr(const std::string &, TableContext &);
-
-        static void
-        add_columns_to_context(Table &, const std::string &, int, int, bool, ColumnContext &);
-
     };
 }

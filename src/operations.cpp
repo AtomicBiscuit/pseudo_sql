@@ -1,4 +1,5 @@
 #include "../include/operations.h"
+#include "../include/column.h"
 
 using namespace database::operations;
 using namespace std::string_literals;
@@ -154,6 +155,8 @@ bool ComparisonOperation::_compare(int col) const {
         return a < b;
     } else if (op_ == "=") {
         return a == b;
+    } else if (op_ == "!=") {
+        return a != b;
     } else if (op_ == ">=") {
         return a >= b;
     } else if (op_ == "<=") {

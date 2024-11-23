@@ -33,7 +33,7 @@ Insert::_parse_by_names(std::string_view &view, const Table &table) {
         name_to_index.emplace(cols[i]->name(), i);
     }
 
-    std::vector<std::optional<value_t>> res(vals.size());
+    std::vector<std::optional<value_t>> res(table.get_columns().size());
     for (int i = 0; i < vals.size(); i++) {
         auto col_other = tokenize::clear_parse(vals[i], "=", false);
         SYNTAX_ASSERT(col_other.size() == 2,
@@ -44,10 +44,11 @@ Insert::_parse_by_names(std::string_view &view, const Table &table) {
         auto col_name = tokenize::get_word(col_view);
         SYNTAX_ASSERT(tokenize::check_empty(col_view), "Непредвиденный литерал: " + std::string(col_view));
 
-        value_t value = tokenize::get_value(value_view, cols[i]->type());
+        EXEC_ASSERT(name_to_index.contains(col_name), "Неизвестный столбец: " + col_name);
+
+        value_t value = tokenize::get_value(value_view, cols[name_to_index[col_name]]->type());
         SYNTAX_ASSERT(tokenize::check_empty(value_view), "Непредвиденный литерал: " + std::string(value_view));
 
-        EXEC_ASSERT(name_to_index.contains(col_name), "Неизвестный столбец: " + col_name);
         res[name_to_index[col_name]] = value;
     }
     return res;
@@ -64,7 +65,7 @@ Insert::_parse_value(const std::string &value_str, const Table &table) {
     value_view.remove_prefix(1);
     value_view.remove_suffix(1);
 
-    if (tokenize::clear_parse(value_str, "=", false).size() == 1) {
+    if (tokenize::clear_parse(std::string(value_view), "=", false).size() == 1) {
         return _parse_linear(value_view, table);
     }
     return _parse_by_names(value_view, table);

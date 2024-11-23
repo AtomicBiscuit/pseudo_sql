@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../include/table.h"
+#include "column.h"
 
 #include <memory>
 #include <map>
@@ -36,13 +37,8 @@ namespace tokenize {
     std::vector<std::string> clear_parse(const std::string &, const std::string &, bool);
 
 
-    inline std::string to_lower(std::string s) {
-        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return tolower(c); });
-        return s;
-    }
+    std::string to_lower(std::string s);
 
-    inline std::string to_lower(std::string_view s) {
-        return to_lower(std::string(s));
-    }
+    std::string to_lower(std::string_view s);
 
 }
