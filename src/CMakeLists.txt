@@ -10,4 +10,6 @@ add_library(
         prior_oper.cpp
         insert.cpp
         update.cpp
+        delete.cpp
+        ../include/delete.h
 )

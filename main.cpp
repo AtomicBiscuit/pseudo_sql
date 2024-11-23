@@ -51,15 +51,26 @@ insert (, "Alice",    false, 0xabc) to table;
 
 insert (100, "Handra",    false, 0xfeed) to table;
 
+insert (name = "Jojo",       state
+ = true
+	,
+	vars= 0x001
+) to table;
+
+update table set i_col=|name| + |vars|, vars=0xDEAD where i_col != 100;
+
 select a.b + "____" + b.name as b_join_name, a.c, a.c / b.i_col, b.i_col, b.name, b.state, b.vars
 from (select "a" + "_" + name as b, 7777 + table.i_col as c from table where true) as a
 	join table as b on true
 where true;
+
 select i_col - 4 * 3 / (|"12"|%(|("123")|%|"123456"|))+1 as num_____1,
          0xabc > 0x123   	as book_4,
 		 name + "_" + "777" as t_
 from table
-where i_col >= 6;)";
+where i_col >= 6;
+
+delete table where (i_col + |name|) % 2 = 0 && vars <= 0xEEEE;)";
     std::stringstream example_stream(example);
     std::string s;
     while (std::getline(example_stream, s, ';')) {

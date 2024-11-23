@@ -4,6 +4,7 @@
 #include "create.h"
 #include "insert.h"
 #include "update.h"
+#include "delete.h"
 
 #include <list>
 #include <string>
@@ -21,6 +22,7 @@ private:
             {"create", std::make_shared<database::Create>()},
             {"insert", std::make_shared<database::Insert>()},
             {"update", std::make_shared<database::Update>()},
+            {"delete", std::make_shared<database::Delete>()},
     };
 
 public:

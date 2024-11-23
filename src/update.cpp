@@ -26,11 +26,10 @@ Table Update::parse_and_execute(const std::string &str, TableContext &ctx) const
 
     auto condition = build_execution_tree_from_expression(assignments_other[1], column_ctx);
 
-    auto assignments = _parse_assignments(assignments_other[0], column_ctx);
+    EXEC_ASSERT(condition->type() == Type::Boolean,
+                "Тип выражения `where`(" + type_to_str(condition->type()) + ") не является bool");
 
-    if (assignments.empty()) {
-        return table;
-    }
+    auto assignments = _parse_assignments(assignments_other[0], column_ctx);
 
     return update(table, condition, assignments);
 }
@@ -58,8 +57,6 @@ Update::_parse_assignments(const std::string &str, ColumnContext &ctx) {
 
 Table Update::update(Table table, std::unique_ptr<operations::Operation> &condition,
                      std::vector<std::pair<std::shared_ptr<IColumn>, std::unique_ptr<operations::Operation>>> &assign) {
-    EXEC_ASSERT(condition->type() == Type::Boolean,
-                "Тип выражения `where`(" + type_to_str(condition->type()) + ") не является bool");
     std::map<std::string, bool> visited;
     for (auto &[col, oper]: assign) {
         EXEC_ASSERT(!visited.contains(col->name()), "Столбец `" + col->name() + "` изменяется несколько раз");
