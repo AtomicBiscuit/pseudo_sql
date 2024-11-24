@@ -2,7 +2,7 @@
 
 
 #include "syexception.h"
-#include "table.h"
+#include "serializer.h"
 
 #include <optional>
 #include <unordered_set>
@@ -13,53 +13,19 @@
 #include <algorithm>
 #include <vector>
 #include <variant>
+#include <fstream>
 
 namespace database {
-    enum class Type {
-        Integer, Boolean, String, Bytes, None,
-    };
 
-    static inline std::string type_to_str(Type t) {
-        switch (t) {
-            case (Type::Integer):
-                return "int32";
-            case (Type::Boolean):
-                return "bool";
-            case (Type::String):
-                return "string";
-            case (Type::Bytes):
-                return "bytes";
-            default:
-                return "none";
-        }
-    }
-
-    using value_t = std::variant<int, bool, std::string, std::vector<bool>>;
-
-    static inline std::string value_to_string(const value_t &val, Type type) {
-        if (type == database::Type::Integer)
-            return std::to_string(get<int>(val));
-        if (type == database::Type::Boolean)
-            return std::to_string(get<bool>(val));
-        if (type == database::Type::String)
-            return get<std::string>(val);
-        std::stringstream out;
-        out << "0x";
-        const auto &bytes = get<std::vector<bool>>(val);
-        for (size_t i = 0; i < bytes.size(); i += 4) {
-            out << std::hex << 8 * bytes[i] + 4 * bytes[i + 1] + 2 * bytes[i + 2] + bytes[i + 3];
-        }
-        return out.str();
-    }
 
     class IColumn {
     protected:
         Type type_;
         std::string name_;
         database::value_t default_value_;
+        bool is_autoinc_ = false;
         bool is_default_ = false;
         bool is_unique_ = false;
-        bool is_autoinc_ = false;
 
     public:
 
@@ -67,18 +33,19 @@ namespace database {
 
         IColumn(Type type, const std::string &name, bool is_unique, bool is_auto, bool is_def, const value_t &def)
                 : type_(type), name_(name),
-                  default_value_(def), is_default_(is_def), is_unique_(is_unique), is_autoinc_(is_auto) {
+                  default_value_(def), is_autoinc_(is_auto), is_default_(is_def), is_unique_(is_unique) {
             if (is_autoinc_ and not holds_alternative<int>(default_value_)) {
                 default_value_ = 0;
             }
         };
 
-        IColumn(const IColumn &other) : type_(other.type_), name_(other.name_), is_default_(other.is_default_),
-                                        is_unique_(other.is_unique_), is_autoinc_(other.is_autoinc_) {};
+        IColumn(const IColumn &other) : type_(other.type_), name_(other.name_), is_autoinc_(other.is_autoinc_),
+                                        is_default_(other.is_default_),
+                                        is_unique_(other.is_unique_) {};
 
         IColumn(IColumn &&other) noexcept: type_(other.type_), name_(std::move(other.name_)),
-                                           is_default_(other.is_default_), is_unique_(other.is_unique_),
-                                           is_autoinc_(other.is_autoinc_) {};
+                                           is_autoinc_(other.is_autoinc_), is_default_(other.is_default_),
+                                           is_unique_(other.is_unique_) {};
 
         virtual ~IColumn() = default;
 
@@ -98,9 +65,16 @@ namespace database {
 
         virtual void add(std::optional<value_t> &&) = 0;
 
+        virtual void save_to_file(std::ofstream &) const = 0;
+
+        static std::shared_ptr<IColumn> load_from_file(std::ifstream &file);
+
         virtual size_t size() const = 0;
 
         virtual value_t get_value(int row) const = 0;
+
+    private:
+        virtual void _load_from_file_impl(std::ifstream &file) = 0;
     };
 
     template<typename T> requires(std::convertible_to<T, value_t>)
@@ -121,8 +95,9 @@ namespace database {
         void set_rows(std::vector<T> &&rows) { rows_ = std::move(rows); }
 
         void check_valid() const override {
-            EXEC_ASSERT(!is_unique_ or std::unordered_set<value_t>(rows_.begin(), rows_.end()).size() == rows_.size(),
-                        "Нарушено требование unique столбца " + name_);
+            EXEC_ASSERT(
+                    !is_unique_ or std::unordered_set<value_t>(rows_.begin(), rows_.end()).size() == rows_.size(),
+                    "Нарушено требование unique столбца " + name_);
         }
 
         std::shared_ptr<IColumn> multicopy(size_t cnt, bool is_seq) const override {
@@ -187,9 +162,36 @@ namespace database {
             rows_.push_back(std::move(get<T>(new_val)));
         }
 
+
+        void save_to_file(std::ofstream &file) const override {
+            serialization::save_str(file, name_);
+            serialization::save_int(file, static_cast<int>(type_));
+            serialization::save_bool(file, is_autoinc_);
+            serialization::save_bool(file, is_default_);
+            serialization::save_bool(file, is_unique_);
+            serialization::save<T>(file, get<T>(default_value_));
+            serialization::save_int(file, rows_.size());
+            for (const auto &val: rows_) {
+                serialization::save<T>(file, val);
+            }
+        }
+
         virtual size_t size() const override { return rows_.size(); };
 
         value_t get_value(int row) const override { return rows_[row]; }
+
+    private:
+        void _load_from_file_impl(std::ifstream &file) override {
+            is_autoinc_ = serialization::load_bool(file);
+            is_default_ = serialization::load_bool(file);
+            is_unique_ = serialization::load_bool(file);
+            default_value_ = serialization::load<T>(file);
+            int size = serialization::load_int(file);
+            rows_.reserve(size);
+            for (int i = 0; i < size; i++) {
+                rows_.push_back(std::move(serialization::load<T>(file)));
+            }
+        }
     };
 
 

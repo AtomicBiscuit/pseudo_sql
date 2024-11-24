@@ -12,4 +12,8 @@ add_library(
         update.cpp
         delete.cpp
         ../include/delete.h
+        ../include/serializer.h
+        serializer.cpp
+        ../include/value.h
+        column.cpp
 )

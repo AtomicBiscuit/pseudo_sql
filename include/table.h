@@ -1,6 +1,5 @@
 #pragma once
 
-#include "syexception.h"
 #include "column.h"
 
 #include <variant>
@@ -43,6 +42,10 @@ namespace database {
         void add_row(std::vector<std::optional<value_t>> &&row);
 
         void check_valid() const;
+
+        void save_to_file(std::ofstream &) const;
+
+        static Table load_from_file(std::ifstream &) ;
     };
 
     struct TableContext {

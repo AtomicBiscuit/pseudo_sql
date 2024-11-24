@@ -1,7 +1,9 @@
 #include <set>
 #include <ranges>
+#include <fstream>
 #include "./../include/table.h"
 #include "../include/column.h"
+#include "../include/serializer.h"
 
 using namespace database;
 
@@ -64,4 +66,23 @@ void Table::add_row(std::vector<std::optional<value_t>> &&row) {
 }
 
 std::vector<std::shared_ptr<IColumn>> Table::get_columns() const { return cols_; }
+
+void Table::save_to_file(std::ofstream &file) const {
+    serialization::save_str(file, name_);
+    serialization::save_int(file, cols_.size());
+    for (auto &col: cols_) {
+        col->save_to_file(file);
+    }
+}
+
+Table Table::load_from_file(std::ifstream &file) {
+    auto name = serialization::load_str(file);
+    int size = serialization::load_int(file);
+    Table temp(name);
+    for (int i = 0; i < size; i++) {
+        temp.add_column(IColumn::load_from_file(file));
+    }
+    temp.check_valid();
+    return temp;
+}
 

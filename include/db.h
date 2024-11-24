@@ -31,6 +31,10 @@ public:
 
     database::Table execute(const std::string &target);
 
+    void save_to_file(const std::string &) const;
+
+    void load_from_file(const std::string &);
+
 private:
     static std::shared_ptr<database::CommandExpression> _get_command(std::string_view &);
 };
