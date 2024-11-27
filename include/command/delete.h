@@ -1,8 +1,8 @@
 #pragma once
 
-#include "operations.h"
-#include "expression.h"
-#include "column.h"
+#include "../operations.h"
+#include "../expression.h"
+#include "../data/column.h"
 
 #include <memory>
 

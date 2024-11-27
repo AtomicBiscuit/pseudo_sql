@@ -1,5 +1,5 @@
 #include "../include/operations.h"
-#include "../include/column.h"
+#include "../include/data/column.h"
 
 using namespace database::operations;
 using namespace std::string_literals;

@@ -1,7 +1,7 @@
 #include <tuple>
 #include "../include/expression.h"
 #include "../include/token.h"
-#include "../include/select.h"
+#include "../include/command/select.h"
 #include "../include/db.h"
 
 using namespace database;

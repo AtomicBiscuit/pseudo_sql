@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "syexception.h"
+#include "../syexception.h"
 #include "serializer.h"
 
 #include <optional>
@@ -121,6 +121,9 @@ namespace database {
             int ind = 0;
             for (auto i: rows) {
                 rows_[i] = std::move(get<T>(new_vals_[ind++]));
+            }
+            if (is_unique_) {
+                check_valid();
             }
         }
 

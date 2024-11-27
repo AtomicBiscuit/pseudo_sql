@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../include/table.h"
-#include "column.h"
+#include "data/table.h"
+#include "data/column.h"
 
 #include <memory>
 #include <map>

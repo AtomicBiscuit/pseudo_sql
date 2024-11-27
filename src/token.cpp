@@ -1,5 +1,5 @@
 #include "../include/token.h"
-#include "../include/column.h"
+#include "../include/data/column.h"
 
 #include <string>
 

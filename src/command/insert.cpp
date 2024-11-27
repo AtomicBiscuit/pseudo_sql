@@ -1,5 +1,5 @@
-#include "../include/insert.h"
-#include "../include/token.h"
+#include "../../include/command/insert.h"
+#include "../../include/token.h"
 
 using namespace database;
 using namespace std::string_literals;

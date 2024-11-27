@@ -1,8 +1,8 @@
 #pragma once
 
-#include "table.h"
+#include "data/table.h"
 #include "syexception.h"
-#include "column.h"
+#include "data/column.h"
 
 #include <map>
 #include <vector>

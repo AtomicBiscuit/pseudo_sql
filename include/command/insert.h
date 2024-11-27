@@ -1,7 +1,7 @@
 #pragma once
 
-#include "operations.h"
-#include "expression.h"
+#include "../operations.h"
+#include "../expression.h"
 
 #include <memory>
 

@@ -1,5 +1,5 @@
-#include "../include/delete.h"
-#include "../include/token.h"
+#include "../../include/command/delete.h"
+#include "../../include/token.h"
 
 using namespace database;
 using namespace operations;
@@ -42,4 +42,3 @@ Table Delete::delete_impl(Table table, std::unique_ptr<Operation> &condition) {
     }
     return table;
 }
-

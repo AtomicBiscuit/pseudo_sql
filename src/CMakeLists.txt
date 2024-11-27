@@ -1,19 +1,16 @@
 add_library(
         Database STATIC
         db.cpp
-        select.cpp
+        command/select.cpp
         expression.cpp
         token.cpp
         operations.cpp
-        table.cpp
-        create.cpp
+        data/table.cpp
+        command/create.cpp
         prior_oper.cpp
-        insert.cpp
-        update.cpp
-        delete.cpp
-        ../include/delete.h
-        ../include/serializer.h
-        serializer.cpp
-        ../include/value.h
-        column.cpp
+        command/insert.cpp
+        command/update.cpp
+        command/delete.cpp
+        data/serializer.cpp
+        data/column.cpp
 )

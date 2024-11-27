@@ -1,10 +1,10 @@
 #pragma once
 
-#include "select.h"
-#include "create.h"
-#include "insert.h"
-#include "update.h"
-#include "delete.h"
+#include "command/select.h"
+#include "command/create.h"
+#include "command/insert.h"
+#include "command/update.h"
+#include "command/delete.h"
 
 #include <list>
 #include <string>

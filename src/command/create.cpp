@@ -1,9 +1,8 @@
-#include "../include/create.h"
-#include "../include/token.h"
-#include "../include/column.h"
+#include "../../include/command/create.h"
+#include "../../include/token.h"
+#include "../../include/data/column.h"
 
 #include <ranges>
-
 
 using namespace std::string_literals;
 using namespace database;

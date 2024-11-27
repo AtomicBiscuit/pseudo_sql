@@ -1,9 +1,9 @@
 #include <set>
 #include <ranges>
 #include <fstream>
-#include "./../include/table.h"
-#include "../include/column.h"
-#include "../include/serializer.h"
+#include "../../include/data/table.h"
+#include "../../include/data/column.h"
+#include "../../include/data/serializer.h"
 
 using namespace database;
 

@@ -69,8 +69,7 @@ select i_col - 4 * 3 / (|"12"|%(|("123")|%|"123456"|))+1 as num_____1,
 		 name + "_" + "777" as t_
 from table
 where i_col >= 6;)";
-    // delete table where (i_col + |name|) % 2 = 0 && vars <= 0xEEEE;
-    std::stringstream example_stream(example);
+   std::stringstream example_stream(example);
     std::string s;
     while (std::getline(example_stream, s, ';')) {
         auto res = db.execute(s);

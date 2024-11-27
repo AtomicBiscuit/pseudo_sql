@@ -1,6 +1,6 @@
-#include "../include/update.h"
-#include "../include/token.h"
-#include "../include/column.h"
+#include "../../include/command/update.h"
+#include "../../include/token.h"
+#include "../../include/data/column.h"
 
 using namespace database;
 using namespace operations;
@@ -81,6 +81,5 @@ Table Update::update(Table table, std::unique_ptr<operations::Operation> &condit
         }
         col->apply_update(valid_rows, values);
     }
-    table.check_valid();
     return table;
 }

@@ -1,7 +1,7 @@
 #include <fstream>
 #include "../include/db.h"
 #include "../include/token.h"
-#include "../include/serializer.h"
+#include "../include/data/serializer.h"
 
 using namespace database;
 

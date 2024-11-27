@@ -1,6 +1,6 @@
 #pragma once
 
-#include "table.h"
+#include "data/table.h"
 #include "operations.h"
 
 #include <string>
