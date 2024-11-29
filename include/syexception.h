@@ -6,7 +6,7 @@
 #define EXEC_ASSERT(cond, text) do{ if(!(cond))throw execution_error((text)); }while(0)
 #define SERIAL_ASSERT(cond, text) do{ if(!(cond))throw serialization_error((text)); }while(0)
 
-class syntax_error : std::exception {
+class syntax_error : public std::exception {
 private:
     std::string what_;
 public:
@@ -21,7 +21,7 @@ public:
     }
 };
 
-class execution_error : std::exception {
+class execution_error : public std::exception {
 private:
     std::string what_;
 public:
@@ -36,7 +36,7 @@ public:
     }
 };
 
-class serialization_error : std::exception {
+class serialization_error : public std::exception {
 private:
     std::string what_;
 public:

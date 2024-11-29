@@ -1,6 +1,7 @@
 #pragma once
 
 #include "column.h"
+#include "row.h"
 
 #include <variant>
 #include <vector>
@@ -29,11 +30,11 @@ namespace database {
 
         Table &operator=(Table &&other) noexcept;
 
-        std::vector<std::shared_ptr<IColumn>> get_columns() const;
+        std::vector<std::shared_ptr<IColumn>> columns() const;
+
+        Row row(int) const;
 
         const std::string &name() const;
-
-        void set_name(std::string new_name);
 
         void add_columns_to_context(const std::string &, ColumnContext &, int, int, bool) const;
 
@@ -45,7 +46,7 @@ namespace database {
 
         void save_to_file(std::ofstream &) const;
 
-        static Table load_from_file(std::ifstream &) ;
+        static Table load_from_file(std::ifstream &);
     };
 
     struct TableContext {

@@ -2,8 +2,6 @@
 #include <ranges>
 #include <fstream>
 #include "../../include/data/table.h"
-#include "../../include/data/column.h"
-#include "../../include/data/serializer.h"
 
 using namespace database;
 
@@ -54,8 +52,6 @@ Table &Table::operator=(const Table &other) {
 
 const std::string &Table::name() const { return name_; }
 
-void Table::set_name(std::string new_name) { name_ = std::move(new_name); }
-
 void Table::add_column(const std::shared_ptr<IColumn> &col) { cols_.push_back(col); }
 
 void Table::add_row(std::vector<std::optional<value_t>> &&row) {
@@ -65,7 +61,7 @@ void Table::add_row(std::vector<std::optional<value_t>> &&row) {
     }
 }
 
-std::vector<std::shared_ptr<IColumn>> Table::get_columns() const { return cols_; }
+std::vector<std::shared_ptr<IColumn>> Table::columns() const { return cols_; }
 
 void Table::save_to_file(std::ofstream &file) const {
     serialization::save_str(file, name_);
@@ -84,5 +80,16 @@ Table Table::load_from_file(std::ifstream &file) {
     }
     temp.check_valid();
     return temp;
+}
+
+Row Table::row(int num) const {
+    if (num < 0 or num > cols_[0]->size()) {
+        throw std::out_of_range("Не найдена строка с номером " + std::to_string(num));
+    }
+    std::map<std::string, value_t> res;
+    for (auto &col: cols_) {
+        res[col->name()] = col->get_value(num);
+    }
+    return Row(res);
 }
 

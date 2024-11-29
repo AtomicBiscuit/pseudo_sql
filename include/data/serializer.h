@@ -9,7 +9,6 @@ namespace database {
         constexpr unsigned CHAR_SIZE = sizeof(char);
         constexpr unsigned INT_SIZE = sizeof(int) / CHAR_SIZE;
         constexpr unsigned BOOL_SIZE = sizeof(bool) / CHAR_SIZE;
-        constexpr unsigned BYTE_SIZE = sizeof(std::byte) / CHAR_SIZE;
 
         void save_str(std::ofstream &, const std::string &);
 

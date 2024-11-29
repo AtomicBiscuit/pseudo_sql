@@ -19,7 +19,7 @@ Table Update::parse_and_execute(const std::string &str, TableContext &ctx) const
 
     auto table = ctx.tables[name];
     ColumnContext column_ctx;
-    table.add_columns_to_context(table.name(), column_ctx, 0, table.get_columns().size(), true);
+    table.add_columns_to_context(table.name(), column_ctx, 0, table.columns().size(), true);
 
     auto assignments_other = tokenize::clear_parse(std::string(view), "where", true);
     SYNTAX_ASSERT(assignments_other.size() == 2, "Ключевое слово `where` должно единожды встречаться в запросе");
@@ -67,7 +67,7 @@ Table Update::update(Table table, std::unique_ptr<operations::Operation> &condit
     }
 
     std::vector<int> valid_rows;
-    int size = table.get_columns().empty() ? 0 : table.get_columns()[0]->size();
+    int size = table.columns().empty() ? 0 : table.columns()[0]->size();
     for (int i = 0; i < size; i++) {
         if (get<bool>(condition->eval(i))) {
             valid_rows.push_back(i);

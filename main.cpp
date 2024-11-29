@@ -1,43 +1,7 @@
 #include "include/db.h"
+#include "include/print.h"
 
-#include <iostream>
-#include <iomanip>
-
-using namespace std::string_literals;
-
-void print_table(database::Table &table) {
-    int width = 20;
-    auto cols = table.get_columns();
-    int all_width = (width + 1) * cols.size() + 2;
-    int size = cols.empty() ? 0 : cols[0]->size();
-    std::cout << "\033[1m";
-    std::cout << std::setw(all_width) << std::setfill('-') << '\n';
-    std::cout << '|';
-    for (auto &col: cols) {
-        std::cout << std::setw(width) << std::setfill(' ') << col->name() << '|';
-    }
-    std::cout << "\n";
-    std::cout << "|";
-    for (auto &col: cols) {
-        std::cout << std::setw(width) << std::setfill(' ') << database::type_to_str(col->type()) << '|';
-    }
-    std::cout << '\n';
-    std::cout << std::setw(all_width) << std::setfill('-') << '\n';
-    for (int i = 0; i < size; i++) {
-        std::cout << "|";
-        for (auto &col: cols) {
-            std::cout << std::setw(width) << std::setfill(' ')
-                      << database::value_to_string(col->get_value(i), col->type()) << '|';
-        }
-        std::cout << '\n';
-    }
-    std::cout << std::setw(all_width) << std::setfill('-') << '\n';
-    std::cout << "\033[0m";
-}
-
-int main() {
-    DataBase db;
-    std::string example = R"(
+std::string example = R"(
 create table table(
 	{unique, key, autoincrement}i_col:InTeger=5,
 	name : string ,
@@ -59,7 +23,7 @@ insert (name = "Jojo",       state
 
 update table set i_col=|name| + |vars|, vars=0xDEAD where i_col != 100;
 
-select a.b + "____" + b.name as b_join_name, a.c, a.c / b.i_col, b.i_col, b.name, b.state, b.vars
+select a.b + "____" + b.name as b_join_name, a.c, a.c / b.i_col, b.i_col, b.name, b.state, b.vars as very__long__name__yes
 from (select "a" + "_" + name as b, 7777 + table.i_col as c from table where true) as a
 	join table as b on true
 where true;
@@ -69,10 +33,16 @@ select i_col - 4 * 3 / (|"12"|%(|("123")|%|"123456"|))+1 as num_____1,
 		 name + "_" + "777" as t_
 from table
 where i_col >= 6;)";
-   std::stringstream example_stream(example);
-    std::string s;
-    while (std::getline(example_stream, s, ';')) {
-        auto res = db.execute(s);
+
+int main() {
+    DataBase db;
+
+    std::string command_str;
+
+    std::stringstream example_stream(example);
+
+    while (std::getline(example_stream, command_str, ';')) {
+        auto res = db.execute(command_str);
         print_table(res);
     }
 
@@ -80,14 +50,11 @@ where i_col >= 6;)";
     db.load_from_file("dump.bin");
 
     while (true) {
-        try {
-            std::getline(std::cin, s, ';');
-            auto res = db.execute(s);
-            print_table(res);
-        } catch (syntax_error &err) {
-            std::cerr << "\033[31;1mSyntax error: " << err.what() << "\033[0m" << std::endl;
-        } catch (execution_error &err) {
-            std::cerr << "\033[31;1mExecution error: " << err.what() << "\033[0m" << std::endl;
+        std::getline(std::cin, command_str, ';');
+        auto res = db.execute(command_str);
+        print_table(res);
+        if (not res.is_success()) {
+            break;
         }
     }
     return 0;

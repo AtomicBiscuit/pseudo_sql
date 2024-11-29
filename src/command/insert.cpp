@@ -7,7 +7,7 @@ using namespace std::string_literals;
 
 std::vector<std::optional<value_t>> Insert::_parse_linear(std::string_view &view, const Table &table) {
     auto vals = tokenize::clear_parse(std::string(view), ",", false);
-    auto cols = table.get_columns();
+    auto cols = table.columns();
 
     SYNTAX_ASSERT(vals.size() == cols.size(), "Ожидался ввод " + std::to_string(cols.size()) + " значений, получено " +
                                               std::to_string(vals.size()));
@@ -26,14 +26,14 @@ std::vector<std::optional<value_t>> Insert::_parse_linear(std::string_view &view
 std::vector<std::optional<value_t>>
 Insert::_parse_by_names(std::string_view &view, const Table &table) {
     auto vals = tokenize::clear_parse(std::string(view), ",", false);
-    auto cols = table.get_columns();
+    auto cols = table.columns();
 
     std::map<std::string, int> name_to_index;
     for (int i = 0; i < cols.size(); ++i) {
         name_to_index.emplace(cols[i]->name(), i);
     }
 
-    std::vector<std::optional<value_t>> res(table.get_columns().size());
+    std::vector<std::optional<value_t>> res(table.columns().size());
     for (int i = 0; i < vals.size(); i++) {
         auto col_other = tokenize::clear_parse(vals[i], "=", false);
         SYNTAX_ASSERT(col_other.size() == 2,

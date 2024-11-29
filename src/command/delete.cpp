@@ -19,7 +19,7 @@ Table Delete::parse_and_execute(const std::string &str, TableContext &ctx) const
 
     auto table = ctx.tables[name];
     ColumnContext column_ctx;
-    table.add_columns_to_context(table.name(), column_ctx, 0, table.get_columns().size(), true);
+    table.add_columns_to_context(table.name(), column_ctx, 0, table.columns().size(), true);
 
     auto condition = build_execution_tree_from_expression(std::string(view), column_ctx);
     EXEC_ASSERT(condition->type() == Type::Boolean,
@@ -30,7 +30,7 @@ Table Delete::parse_and_execute(const std::string &str, TableContext &ctx) const
 
 Table Delete::delete_impl(Table table, std::unique_ptr<Operation> &condition) {
     std::vector<int> valid;
-    auto cols = table.get_columns();
+    auto cols = table.columns();
     int size = cols.empty() ? 0 : cols[0]->size();
     for (int i = 0; i < size; i++) {
         if (not get<bool>(condition->eval(i))) {

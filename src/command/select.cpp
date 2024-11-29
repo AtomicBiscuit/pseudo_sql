@@ -90,13 +90,13 @@ Select::_resolve_column_expr(const std::string &cols, ColumnContext &ctx) {
 
 void Select::select(Table &table, std::unique_ptr<Operation> cond) {
     std::vector<int> row_nums;
-    int rows = table.get_columns().empty() ? 0 : table.get_columns()[0]->size();
+    int rows = table.columns().empty() ? 0 : table.columns()[0]->size();
     for (int i = 0; i < rows; ++i) {
         if (std::get<bool>(cond->eval(i))) {
             row_nums.push_back(i);
         }
     }
-    for (auto &col: table.get_columns()) {
+    for (auto &col: table.columns()) {
         col->apply_delete(row_nums);
     }
 }
@@ -105,7 +105,7 @@ Table Select::select(Table &table, std::unique_ptr<Operation> condition,
                      std::vector<std::pair<std::unique_ptr<Operation>, std::string>> &columns,
                      const std::string &table_name) {
     std::vector<int> valid;
-    int row_cnt = static_cast<int>(table.get_columns().empty() ? 0 : table.get_columns()[0]->size());
+    int row_cnt = static_cast<int>(table.columns().empty() ? 0 : table.columns()[0]->size());
     for (int i = 0; i < row_cnt; ++i) {
         if (get<bool>(condition->eval(i))) {
             valid.push_back(i);
@@ -120,8 +120,8 @@ Table Select::select(Table &table, std::unique_ptr<Operation> condition,
 }
 
 Table Select::cartesian_product(const Table &table1, const Table &table2) {
-    auto cols1 = table1.get_columns();
-    auto cols2 = table2.get_columns();
+    auto cols1 = table1.columns();
+    auto cols2 = table2.columns();
     auto res = Table(table1.name() + "_" + table2.name());
     size_t sz1 = (cols1.empty() ? 0 : cols1[0]->size());
     size_t sz2 = (cols2.empty() ? 0 : cols2[0]->size());
@@ -141,15 +141,15 @@ std::tuple<Table, ColumnContext> Select::_resolve_table_expr(const std::string &
     auto [table, alias] = get_table_from_expression(parts[0], ctx);
 
     ColumnContext column_ctx;
-    table.add_columns_to_context(alias, column_ctx, 0, table.get_columns().size(), true);
-    history.push_back({alias, table.get_columns().size()});
+    table.add_columns_to_context(alias, column_ctx, 0, table.columns().size(), true);
+    history.push_back({alias, table.columns().size()});
 
     for (auto it = parts.begin() + 1; it < parts.end(); ++it) {
         auto subparts = tokenize::clear_parse(*it, "on", true);
         SYNTAX_ASSERT(subparts.size() == 2, "Некорректное использование ключевого слова `on`");
 
         auto [cur_table, cur_alias] = get_table_from_expression(subparts[0], ctx);
-        history.push_back({cur_alias, cur_table.get_columns().size()});
+        history.push_back({cur_alias, cur_table.columns().size()});
 
         table = cartesian_product(table, cur_table);
 
