@@ -49,6 +49,9 @@ Insert::_parse_by_names(std::string_view &view, const Table &table) {
         value_t value = tokenize::get_value(value_view, cols[name_to_index[col_name]]->type());
         SYNTAX_ASSERT(tokenize::check_empty(value_view), "Непредвиденный литерал: " + std::string(value_view));
 
+
+        SYNTAX_ASSERT(not res[name_to_index[col_name]].has_value(),
+                      "Столбец `" + col_name + "` встречается несколько раз");
         res[name_to_index[col_name]] = value;
     }
     return res;

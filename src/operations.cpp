@@ -30,10 +30,10 @@ database::value_t BinaryOperation::eval(int col) const {
             case '*':
                 return v2 * v1;
             case '/':
-                if (v1 == 0) throw execution_error("Попытка деления на 0");
+                EXEC_ASSERT(v1 != 0, "Попытка деления на 0");
                 return v2 / v1;
             case '%':
-                if (v1 == 0) throw execution_error("Попытка деления на 0");
+                EXEC_ASSERT(v1 != 0, "Попытка деления на 0");
                 return v2 % v1;
         }
     } else if (type_ == Type::Bool) {
@@ -222,5 +222,5 @@ void FieldOperation::resolve(ColumnContext &ctx) {
 }
 
 void FieldOperation::_throw() const {
-    throw syntax_error("Столбец `" + name_ + "` не найден");
+    throw execution_error("Столбец `" + name_ + "` не найден");
 }

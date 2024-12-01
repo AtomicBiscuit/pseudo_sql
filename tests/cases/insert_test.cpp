@@ -38,6 +38,21 @@ TEST_F(InsertSuite, InsertSimple) {
     ASSERT_EQ(result.row_, correct);
 }
 
+TEST_F(InsertSuite, InsertByNames) {
+    TableContext ctx = {db.tables_, 0};
+    std::map<std::string, value_t> correct = {
+            {"id",    10100},
+            {"name",  "Petr"},
+            {"age",   42},
+            {"state", false},
+            {"fname", "Petr Ivanovich P"}
+    };
+    auto res = Insert().parse_and_execute(
+            R"(Insert (fname="Petr Ivanovich P", state=false, name="Petr",  age=42) to Users)", ctx);
+    auto result = res.row(10000);
+    ASSERT_EQ(result.row_, correct);
+}
+
 
 TEST_F(InsertSuite, InsertionError) {
     TableContext ctx = {db.tables_, 0};
@@ -46,11 +61,19 @@ TEST_F(InsertSuite, InsertionError) {
     std::string query3 = R"(insert (, "f", false, 42, "Andrew Frank Lewis") to Users)";
     std::string query4 = R"(insert (, "f", 42, true, "unique") to Users)";
     std::string query5 = R"(insert (, 0x42, false, 0, "not a name") to Users)";
+    std::string query6 = R"(insert (name="F", state="false", age=0, fname="not a name") to Users)";
+    std::string query7 = R"(insert (name="F", name="false", state=true, age=0, fname="not a name") to Users)";
+    std::string query8 = R"(insert (state=true, age=0, fname="not a name") to Users)";
+    std::string query9 = R"(insert (, name="F", state=true, age=0, fname="not a name") to Users)";
 
     ASSERT_THROW(Insert().parse_and_execute(query1, ctx), syntax_error);
     ASSERT_THROW(Insert().parse_and_execute(query2, ctx), execution_error);
     ASSERT_THROW(Insert().parse_and_execute(query3, ctx), execution_error);
     ASSERT_THROW(Insert().parse_and_execute(query4, ctx), syntax_error);
     ASSERT_THROW(Insert().parse_and_execute(query5, ctx), syntax_error);
+    ASSERT_THROW(Insert().parse_and_execute(query6, ctx), syntax_error);
+    ASSERT_THROW(Insert().parse_and_execute(query7, ctx), syntax_error);
+    ASSERT_THROW(Insert().parse_and_execute(query8, ctx), execution_error);
+    ASSERT_THROW(Insert().parse_and_execute(query9, ctx), syntax_error);
     ASSERT_EQ(db.tables_["Users"].columns()[0]->size(), 10000);
 }

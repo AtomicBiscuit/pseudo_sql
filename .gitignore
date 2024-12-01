@@ -33,4 +33,5 @@
 
 # Ide
 /cmake-build-debug/
+/cmake-build-debug-coverage/
 /.idea
