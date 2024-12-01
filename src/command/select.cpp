@@ -138,9 +138,10 @@ void Select::cartesian_product_on_condition(Table &res, const Table &table1, con
     int sz1 = int(cols1.empty() ? 0 : cols1[0]->size());
     int sz2 = int(cols2.empty() ? 0 : cols2[0]->size());
 
-    int k = std::max(1, sz2 / 10);
+    int k = std::max(1, sz2 / 10);  /* TODO Адаптивно подбирать k
+                                            Чем меньше k тем меньше памяти занимает join
+                                            Но и больше лишних операций записи происходит */
     for (int i = 0; i < sz2; i += k) {
-        std::cout << i << std::endl;
         for (int c1 = 0; c1 < cols1.size(); c1++) {
             cols1[c1]->copy_to(std::min(k, sz2 - i), cols[c1]);
         }
