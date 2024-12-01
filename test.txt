@@ -1,0 +1,83 @@
+#include "include/db.h"
+#include "include/print.h"
+
+#include <experimental/random>
+
+std::string ex = R"(create table Users(
+	{unique, key, autoincrement}id:InTeger=100,
+	name : string ,
+	state: bool,
+    age:  integer,
+    {unique} fname:string
+);)";
+
+std::vector<std::string> firstName = {"James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda",
+                                      "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph",
+                                      "Jessica", "Thomas", "Sarah", "Charles", "Karen", "Christopher", "Nancy",
+                                      "Daniel", "Lisa", "Matthew", "Betty", "Anthony", "Dorothy", "Donald",
+                                      "Sandra", "Mark", "Ashley", "Paul", "Kimberly", "Steven", "Donna", "George",
+                                      "Emily", "Kenneth", "Michelle", "Andrew", "Carol", "Edward", "Amanda",
+                                      "Brian", "Melissa", "Joshua", "Deborah", "Kevin", "Stephanie", "Ronald",
+                                      "Rebecca", "Gary", "Laura", "Timothy", "Christine", "Joe", "Rachel", "Larry",
+                                      "Debra", "Frank", "Angela", "Henry", "Melanie", "Peter", "Janet", "Walter",
+                                      "Sharon", "Harold", "Cynthia", "Roger", "Katherine"};
+std::vector<std::string> middleName = {"Lee", "Anne", "Joseph", "Marie", "Michael", "Nicole", "Allen", "Grace",
+                                       "Edward", "Jane", "Frank", "Rose", "Charles", "Ann", "Thomas", "May",
+                                       "Edward", "Louise", "Raymond", "Marilyn", "Eugene", "Theresa", "Peter",
+                                       "Gloria", "Eric", "Julia", "Norman", "Ruth", "Bryan", "Anna", "Jerry",
+                                       "Beverly", "Philip", "Judith", "Todd", "Catherine", "Craig", "Helen", "Alan",
+                                       "Laura", "Roger", "Teresa", "Ralph", "Cheryl", "Billy", "Evelyn", "Bruce",
+                                       "Jacqueline", "Howard", "Christine", "Carl", "Kathleen", "Martin", "Denise",
+                                       "Clarence", "Geraldine", "Gordon", "Annette", "Albert", "Suzanne",
+                                       "Frederick", "Pamela", "Lawrence", "Gwendolyn", "Ronnie", "Thelma", "Curtis",
+                                       "Charlene", "Stanley", "Margaret"};
+std::vector<std::string> lastName = {"Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
+                                     "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson",
+                                     "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez",
+                                     "Thompson", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis",
+                                     "Robinson", "Walker", "Young", "Allen", "King", "Wright", "Scott", "Torres",
+                                     "Nguyen", "Hill", "Flores", "Green", "Adams", "Nelson", "Baker", "Hall",
+                                     "Rivera", "Campbell", "Mitchell", "Carter", "Roberts", "Gomez", "Evans",
+                                     "Turner", "Parker", "Collins", "Edwards", "Stewart", "Morris", "Rogers",
+                                     "Reed", "Cook", "Morgan", "Bell", "Murphy", "Bailey", "Cooper", "Cox",
+                                     "Richardson", "Howard"};
+
+std::string generateRandomName() {
+    std::string name = firstName[std::experimental::randint(0, (int) firstName.size() - 1)];
+    name += " ";
+    name += middleName[std::experimental::randint(0, (int) middleName.size() - 1)];
+    name += " ";
+    name += lastName[std::experimental::randint(0, (int) lastName.size() - 1)];
+    return name;
+}
+
+int main() {
+    DataBase db;
+
+    std::string command_str;
+
+    std::stringstream example_stream(ex);
+
+    while (std::getline(example_stream, command_str, ';')) {
+        auto res = db.execute(command_str);
+        print_table(res, 20, 16); // Второй параметр - ширина столбцов, третий - максимальное число выводимых строк
+    }
+
+    for (int i = 0; i < 10000; i++) {
+        std::stringstream temp;
+        temp << "insert (,\""
+             << firstName[std::experimental::randint(0, (int) firstName.size() - 1)] << "\","
+             << (std::experimental::randint(0, 1) % 2 ? "true," : "false,") << std::experimental::randint(0, 150)
+             << ",\"" << generateRandomName() << "\") to Users";
+        auto res = db.execute(temp.str());
+        if (not res.is_success()) {
+            std::cout << i << std::endl;
+            print_table(res);
+            --i; // Генерируем новые имена пока не получится
+        }
+    }
+
+    db.save_to_file("fix.bin");
+    return 0;
+}
+
