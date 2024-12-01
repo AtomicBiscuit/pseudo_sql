@@ -25,6 +25,8 @@ namespace database::operations {
 
         virtual void bind(std::vector<std::unique_ptr<Operation>> &ops) = 0;
 
+        virtual void resolve(ColumnContext &) = 0;
+
         Type type() const { return type_; }
 
         virtual ~Operation() = default;
@@ -41,6 +43,8 @@ namespace database::operations {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override;
 
+        void resolve(ColumnContext &) override;
+
         value_t eval(int col) const override;
 
     private:
@@ -54,6 +58,8 @@ namespace database::operations {
         explicit ComparisonOperation(const std::string &op) : op_(op) {};
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override;
+
+        void resolve(ColumnContext &) override;
 
         value_t eval(int col) const override;
 
@@ -72,6 +78,8 @@ namespace database::operations {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override;
 
+        void resolve(ColumnContext &) override;
+
         value_t eval(int col) const override;
 
     private:
@@ -84,6 +92,8 @@ namespace database::operations {
         LenOperation() = default;
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override;
+
+        void resolve(ColumnContext &) override;
 
         value_t eval(int col) const override;
 
@@ -98,6 +108,8 @@ namespace database::operations {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override {};
 
+        void resolve(ColumnContext &) override {};
+
         value_t eval(int col) const override { return val_; };
     private:
         void _throw() const override {};
@@ -110,6 +122,8 @@ namespace database::operations {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override {};
 
+        void resolve(ColumnContext &) override {};
+
         value_t eval(int col) const override { return val_; };
     private:
         void _throw() const override {};
@@ -118,9 +132,11 @@ namespace database::operations {
     class BoolOperation : public Operation {
         bool val_;
     public:
-        explicit BoolOperation(bool val) : val_(val) { type_ = Type::Boolean; };
+        explicit BoolOperation(bool val) : val_(val) { type_ = Type::Bool; };
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override {};
+
+        void resolve(ColumnContext &) override {};
 
         value_t eval(int col) const override { return val_; };
     private:
@@ -133,6 +149,8 @@ namespace database::operations {
         explicit BytesOperation(const std::vector<bool> &val) : val_(val) { type_ = Type::Bytes; };
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override {};
+
+        void resolve(ColumnContext &) override {};
 
         value_t eval(int col) const override { return val_; };
     private:
@@ -147,11 +165,11 @@ namespace database::operations {
 
         void bind(std::vector<std::unique_ptr<Operation>> &ops) override {};
 
-        void resolve(ColumnContext &);
+        void resolve(ColumnContext &) override;
 
         const std::string &name() const { return name_; };
 
-        value_t eval(int col) const override;
+        value_t eval(int row) const override;
 
     private:
         void _throw() const override;

@@ -57,6 +57,10 @@ void Table::add_column(const std::shared_ptr<IColumn> &col) { cols_.push_back(co
 void Table::add_row(std::vector<std::optional<value_t>> &&row) {
     int i = 0;
     for (auto &col: cols_) {
+        col->check_able_to_insert(row[i++]);
+    }
+    i = 0;
+    for (auto &col: cols_) {
         col->add(std::move(row[i++]));
     }
 }
@@ -91,5 +95,11 @@ Row Table::row(int num) const {
         res[col->name()] = col->get_value(num);
     }
     return Row(res);
+}
+
+void Table::merge(Table &other) const {
+    for (int i = 0; i < cols_.size(); i++) {
+        cols_[i]->merge(other.cols_[i]);
+    }
 }
 

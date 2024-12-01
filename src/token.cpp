@@ -1,5 +1,4 @@
 #include "../include/token.h"
-#include "../include/data/column.h"
 
 #include <string>
 
@@ -22,23 +21,34 @@ std::string tokenize::get_word(std::string_view &view) {
 std::string tokenize::get_str(std::string_view &view) {
     skip_spaces(view);
     SYNTAX_ASSERT(view.starts_with("\""), "Ожидался литерал типа string, найдено: " + std::string(view));
-    int cnt = 1;
-    auto c = view.begin();
-    c++;
-    while (c != view.end() and *c != '"') {
-        if (*(c++) == '\\') {
-            ++cnt;
-            if ((++c) == view.end()) {
+    view.remove_prefix(1);
+    std::stringstream res;
+    while (not view.empty() and view[0] != '"') {
+        switch (view[0]) {
+            case '\\':
+                res << "\\\\";
+                if (view.size() > 1 and view[1] == '"') {
+                    res << '"';
+                    view.remove_prefix(1);
+                }
                 break;
-            }
+            case '\n':
+                res << "\\n";
+                break;
+            case '\t':
+                res << "\\t";
+                break;
+            case '\r':
+                res << "\\r";
+                break;
+            default:
+                res << view[0];
         }
-        ++cnt;
+        view.remove_prefix(1);
     }
-    SYNTAX_ASSERT(c != view.end(), "Не найден конец строки");
-
-    auto temp = std::string(view.begin() + 1, view.begin() + cnt);
-    view.remove_prefix(cnt + 1);
-    return temp;
+    SYNTAX_ASSERT(not view.empty(), "Не найден конец строки");
+    view.remove_prefix(1);
+    return res.str();
 }
 
 std::vector<bool> tokenize::get_bytes(std::string_view &view) {
@@ -77,19 +87,13 @@ int tokenize::get_int(std::string_view &view) {
 }
 
 std::string tokenize::get_full_name(std::string_view &view) {
-    skip_spaces(view);
-    if (view.empty() or !isalpha(view[0])) {
-        return "";
+    auto p1 = get_name(view);
+    if (p1.empty() or not view.starts_with('.')) {
+        return p1;
     }
-    int cnt = 0;
-    auto c = view.begin();
-    while (c != view.end() and (isalnum(*c) or *c == '.' or *c == '_')) {
-        ++c;
-        ++cnt;
-    }
-    auto temp = std::string(view.begin(), view.begin() + cnt);
-    view.remove_prefix(cnt);
-    return temp;
+    view.remove_prefix(1);
+    SYNTAX_ASSERT(not view.empty() and isalpha(view[0]), "Ожидалось имя таблицы, найдено: " + std::string(view));
+    return p1 + "." + get_name(view);
 }
 
 std::string tokenize::get_name(std::string_view &view) {
@@ -124,7 +128,7 @@ value_t tokenize::get_value(std::string_view &view, Type type) {
     value_t res;
     if (type == Type::Integer) {
         res = tokenize::get_int(view);
-    } else if (type == database::Type::Boolean) {
+    } else if (type == database::Type::Bool) {
         auto word = tokenize::get_word(view);
         SYNTAX_ASSERT(word == "true" or word == "false", "Ожидался литерал типа bool, найден: " + word);
         res = static_cast<bool>(word == "true");
@@ -141,17 +145,19 @@ bool tokenize::check_empty(const std::string_view &view) {
 }
 
 
-/// Делит str на слова по разделителю del, но только есть del не находится в тексте "...del..."
+/// Делит str на слова по разделителю del, но только есть del не находится в кавычках "...del..."
 /// и находится на 0 уровне вложенности
 /// \param str строка для деления
 /// \param del разделитель
 /// \param is_separated если true, то требуется чтобы разделить был отделён с двух сторон кем-то из " \n\r\t,"
 /// \return Вектор найденных слов без разделителей
-std::vector<std::string> tokenize::clear_parse(const std::string &str, const std::string &del, bool is_separated) {
-    if (del.starts_with('\\') or del.starts_with('"') or del.starts_with('(')) {
+std::vector<std::string> tokenize::clear_parse(const std::string_view &str, const std::string &del, bool is_separated) {
+    if (del.starts_with('\\') or del.starts_with('"') or del.starts_with('(') or del.starts_with('{')) {
         throw std::domain_error("clear_parse не может обработать разделитель: `" + del + "`");
     }
     const std::string sep = " \n\r\t, ";
+    const std::string open = "({";
+    const std::string close = ")}";
     std::string_view view(str);
     bool is_last_sep = true;
     bool skip = false;
@@ -169,7 +175,7 @@ std::vector<std::string> tokenize::clear_parse(const std::string &str, const std
         } else if (skip) {
             view.remove_prefix(1);
         } else {
-            level += view[0] == '(' ? 1 : (view[0] == ')' ? -1 : 0);
+            level += open.contains(view[0]) ? 1 : (close.contains(view[0]) ? -1 : 0);
             if (level == 0 and to_lower(std::string(view)).starts_with(del)) {
                 if (is_separated and is_last_sep and (view.size() == del.size() or sep.contains(view[del.size()]))) {
                     is_last_sep = false;

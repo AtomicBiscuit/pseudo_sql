@@ -78,7 +78,7 @@ Table Insert::parse_and_execute(const std::string &str, TableContext &ctx) const
     SYNTAX_ASSERT(tokenize::to_lower(temp = tokenize::get_word(view)) == "insert",
                   "Ожидалось ключевое слово `insert`, найдено: " + temp);
 
-    auto values_other = tokenize::clear_parse(std::string(view), "to", true);
+    auto values_other = tokenize::clear_parse(view, "to", true);
     SYNTAX_ASSERT(values_other.size() == 2, "Ключевое слово `to` должно единожды встречаться в запросе");
 
     auto table_view = std::string_view(values_other[1]);

@@ -9,7 +9,7 @@
 namespace database {
     std::tuple<Table, std::string> get_table_from_expression(const std::string &in, TableContext &ctx);
 
-    std::unique_ptr<operations::Operation> build_execution_tree_from_expression(const std::string &, ColumnContext &);
+    std::unique_ptr<operations::Operation> build_execution_tree_from_expression(const std::string &);
 
     class CommandExpression {
     public:

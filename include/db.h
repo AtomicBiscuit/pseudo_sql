@@ -45,7 +45,7 @@ public:
 
         ResultIterator &operator++();
 
-        const ResultIterator operator++(int);
+        ResultIterator operator++(int);
 
         bool operator==(const ExecutionResult::ResultIterator &other) const;
 

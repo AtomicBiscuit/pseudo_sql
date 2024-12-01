@@ -102,11 +102,11 @@ ExecutionResult::ResultIterator &ExecutionResult::ResultIterator::operator++() {
     return *this;
 }
 
-const ExecutionResult::ResultIterator ExecutionResult::ResultIterator::operator++(int) {
+ExecutionResult::ResultIterator ExecutionResult::ResultIterator::operator++(int) {
     if (from_ < to_) {
         return {table_, from_++, to_};
     }
-    return *this;
+    return {table_, from_, to_};;
 }
 
 bool ExecutionResult::ResultIterator::operator==(const ExecutionResult::ResultIterator &other) const {

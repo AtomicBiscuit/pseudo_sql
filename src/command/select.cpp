@@ -26,7 +26,7 @@ static std::shared_ptr<IColumn>
 fill(const std::vector<int> &valid, std::unique_ptr<Operation> val, const std::string &name) {
     if (val->type() == Type::Integer) {
         return impl_fill<int>(valid, std::move(val), name);
-    } else if (val->type() == Type::Boolean) {
+    } else if (val->type() == Type::Bool) {
         return impl_fill<bool>(valid, std::move(val), name);
     } else if (val->type() == Type::String) {
         return impl_fill<std::string>(valid, std::move(val), name);
@@ -52,9 +52,11 @@ Table Select::parse_and_execute(const std::string &str, TableContext &ctx) const
 
     auto columns = _resolve_column_expr(cols_other[0], column_ctx);
 
-    auto condition = build_execution_tree_from_expression(table_other[1], column_ctx);
+    auto condition = build_execution_tree_from_expression(table_other[1]);
 
-    EXEC_ASSERT(condition->type() == Type::Boolean,
+    condition->resolve(column_ctx);
+
+    EXEC_ASSERT(condition->type() == Type::Bool,
                 "Тип выражения `where`(" + type_to_str(condition->type()) + ") не является bool");
 
     return select(table, std::move(condition), columns, "Table" + std::to_string(++ctx.number));
@@ -70,7 +72,10 @@ Select::_resolve_column_expr(const std::string &cols, ColumnContext &ctx) {
         SYNTAX_ASSERT(parts.size() <= 2,
                       "Ключевое слово `as` должно не более одного раза встречаться в конце выражения");
 
-        auto col_expr = build_execution_tree_from_expression(parts[0], ctx);
+        auto col_expr = build_execution_tree_from_expression(parts[0]);
+
+        col_expr->resolve(ctx);
+
         std::string name = "column" + std::to_string(++col_num);
 
         if (parts.size() == 1) {
@@ -88,7 +93,8 @@ Select::_resolve_column_expr(const std::string &cols, ColumnContext &ctx) {
     return columns;
 }
 
-void Select::select(Table &table, std::unique_ptr<Operation> cond) {
+std::unique_ptr<operations::Operation>
+Select::_save_on_condition(Table &table, std::unique_ptr<operations::Operation> cond) {
     std::vector<int> row_nums;
     int rows = table.columns().empty() ? 0 : table.columns()[0]->size();
     for (int i = 0; i < rows; ++i) {
@@ -99,6 +105,7 @@ void Select::select(Table &table, std::unique_ptr<Operation> cond) {
     for (auto &col: table.columns()) {
         col->apply_delete(row_nums);
     }
+    return std::move(cond);
 }
 
 Table Select::select(Table &table, std::unique_ptr<Operation> condition,
@@ -119,30 +126,42 @@ Table Select::select(Table &table, std::unique_ptr<Operation> condition,
     return result_table;
 }
 
-Table Select::cartesian_product(const Table &table1, const Table &table2) {
+void Select::cartesian_product_on_condition(Table &res, const Table &table1, const Table &table2,
+                                            std::unique_ptr<Operation> cond) {
+    auto cols = res.columns();
     auto cols1 = table1.columns();
     auto cols2 = table2.columns();
-    auto res = Table(table1.name() + "_" + table2.name());
-    size_t sz1 = (cols1.empty() ? 0 : cols1[0]->size());
-    size_t sz2 = (cols2.empty() ? 0 : cols2[0]->size());
-    for (size_t i = 0; i < cols1.size(); i++) {
-        res.add_column(cols1[i]->multicopy(sz2, false));
+    auto temp = Table(res.name());
+    for (size_t i = 0; i < cols.size(); i++) {
+        temp.add_column(cols[i]->copy_empty());
     }
-    for (size_t i = 0; i < cols2.size(); i++) {
-        res.add_column(cols2[i]->multicopy(sz1, true));
+    int sz1 = int(cols1.empty() ? 0 : cols1[0]->size());
+    int sz2 = int(cols2.empty() ? 0 : cols2[0]->size());
+
+    int k = std::max(1, sz2 / 10);
+    for (int i = 0; i < sz2; i += k) {
+        std::cout << i << std::endl;
+        for (int c1 = 0; c1 < cols1.size(); c1++) {
+            cols1[c1]->copy_to(std::min(k, sz2 - i), cols[c1]);
+        }
+        for (int c2 = 0; c2 < cols2.size(); c2++) {
+            cols2[c2]->copy_to(i, sz1, std::min(k, sz2 - i), cols[cols1.size() + c2]);
+        }
+        cond = _save_on_condition(res, std::move(cond));
+        temp.merge(res);
     }
-    return res;
+    res.merge(temp);
 }
 
 std::tuple<Table, ColumnContext> Select::_resolve_table_expr(const std::string &table_str, TableContext &ctx) {
     auto parts = tokenize::clear_parse(table_str, "join", true);
 
     std::vector<std::pair<std::string, int>> history;
-    auto [table, alias] = get_table_from_expression(parts[0], ctx);
+    auto [res, alias] = get_table_from_expression(parts[0], ctx);
 
     ColumnContext column_ctx;
-    table.add_columns_to_context(alias, column_ctx, 0, table.columns().size(), true);
-    history.push_back({alias, table.columns().size()});
+    res.add_columns_to_context(alias, column_ctx, 0, res.columns().size(), true);
+    history.push_back({alias, res.columns().size()});
 
     for (auto it = parts.begin() + 1; it < parts.end(); ++it) {
         auto subparts = tokenize::clear_parse(*it, "on", true);
@@ -151,18 +170,33 @@ std::tuple<Table, ColumnContext> Select::_resolve_table_expr(const std::string &
         auto [cur_table, cur_alias] = get_table_from_expression(subparts[0], ctx);
         history.push_back({cur_alias, cur_table.columns().size()});
 
-        table = cartesian_product(table, cur_table);
+        auto condition = build_execution_tree_from_expression(subparts[1]);
+
+        Table last_table{std::move(res)};
+
+        auto cols1 = last_table.columns();
+        auto cols2 = cur_table.columns();
+
+        res = Table(last_table.name() + "_" + cur_table.name());
+        for (size_t i = 0; i < cols1.size(); i++) {
+            res.add_column(cols1[i]->copy_empty());
+        }
+        for (size_t i = 0; i < cols2.size(); i++) {
+            res.add_column(cols2[i]->copy_empty());
+        }
 
         column_ctx.clear();
         int from = 0;
         for (auto &[al, cnt]: history) {
-            table.add_columns_to_context(al, column_ctx, from, cnt, false);
+            res.add_columns_to_context(al, column_ctx, from, cnt, false);
             from += cnt;
         }
-        auto condition = build_execution_tree_from_expression(subparts[1], column_ctx);
-        EXEC_ASSERT(condition->type() == Type::Boolean,
+
+        condition->resolve(column_ctx);
+        EXEC_ASSERT(condition->type() == Type::Bool,
                     "Тип выражения `on`(" + type_to_str(condition->type()) + ") не является bool");
-        select(table, std::move(condition));
+
+        cartesian_product_on_condition(res, last_table, cur_table, std::move(condition));
     }
-    return {table, column_ctx};
+    return {res, column_ctx};
 }

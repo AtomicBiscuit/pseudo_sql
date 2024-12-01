@@ -24,9 +24,10 @@ Table Update::parse_and_execute(const std::string &str, TableContext &ctx) const
     auto assignments_other = tokenize::clear_parse(std::string(view), "where", true);
     SYNTAX_ASSERT(assignments_other.size() == 2, "Ключевое слово `where` должно единожды встречаться в запросе");
 
-    auto condition = build_execution_tree_from_expression(assignments_other[1], column_ctx);
+    auto condition = build_execution_tree_from_expression(assignments_other[1]);
+    condition->resolve(column_ctx);
 
-    EXEC_ASSERT(condition->type() == Type::Boolean,
+    EXEC_ASSERT(condition->type() == Type::Bool,
                 "Тип выражения `where`(" + type_to_str(condition->type()) + ") не является bool");
 
     auto assignments = _parse_assignments(assignments_other[0], column_ctx);
@@ -40,16 +41,20 @@ Update::_parse_assignments(const std::string &str, ColumnContext &ctx) {
     auto parts = tokenize::clear_parse(str, ",", false);
 
     for (const auto &assign_expr: parts) {
-        auto table_other = tokenize::clear_parse(assign_expr, "=", false);
-        SYNTAX_ASSERT(table_other.size() == 2, "Некорректный формат выражения после ключевого слова `set`");
+        auto col_view = std::string_view(assign_expr);
+        auto col_name = tokenize::get_full_name(col_view);
+        SYNTAX_ASSERT(not col_name.empty(), "Некорректное имя столбца: " + col_name);
 
-        auto col_view = std::string_view(table_other[0]);
-        auto col_name = tokenize::get_name(col_view);
-        SYNTAX_ASSERT(tokenize::check_empty(col_view), "Непредвиденный литерал: " + std::string(col_view));
+        tokenize::skip_spaces(col_view);
+        SYNTAX_ASSERT(col_view.starts_with("="), "Ожидался символ `=`");
+        col_view.remove_prefix(1);
+
         EXEC_ASSERT(ctx.contains(col_name), "Таблица `" + col_name + "` не найдена");
-
         auto column = ctx[col_name];
-        auto operation = build_execution_tree_from_expression(table_other[1], ctx);
+
+        auto operation = build_execution_tree_from_expression(std::string(col_view));
+        operation->resolve(ctx);
+
         res.emplace_back(column, std::move(operation));
     }
     return res;

@@ -75,6 +75,7 @@ std::tuple<Table, std::string> database::get_table_from_expression(const std::st
     if (not table_view.starts_with("(")) {
         alias = tokenize::get_name(table_view);
         EXEC_ASSERT(ctx.tables.contains(alias), "Таблица `" + alias + "` не найдена");
+        SYNTAX_ASSERT(tokenize::check_empty(table_view), "Непредвиденный литерал `" + std::string(table_view) + "`");
         table = ctx.tables[alias];
     } else {
         table_view.remove_prefix(1);
@@ -95,7 +96,7 @@ std::tuple<Table, std::string> database::get_table_from_expression(const std::st
 }
 
 std::unique_ptr<Operation>
-database::build_execution_tree_from_expression(const std::string &in, ColumnContext &ctx) {
+database::build_execution_tree_from_expression(const std::string &in) {
     PrioritizedOperation cur = {nullptr, Binary, 0};
     bool is_len = false;
     std::vector<std::unique_ptr<Operation>> postfix;
@@ -109,10 +110,6 @@ database::build_execution_tree_from_expression(const std::string &in, ColumnCont
             continue;
         }
         cur = PrioritizedOperation::get_operation(view, cur.type_, is_len);
-
-        if (cur.prior_ == 42) { // Приоритет 42 только у FieldExpression
-            dynamic_cast<FieldOperation *>(cur.oper_.get())->resolve(ctx);
-        }
 
         push_operation(cur, is_len, infix, postfix);
     }

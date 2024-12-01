@@ -34,11 +34,9 @@ namespace tokenize {
 
     database::value_t get_value(std::string_view &, database::Type);
 
-    std::vector<std::string> clear_parse(const std::string &, const std::string &, bool);
-
+    std::vector<std::string> clear_parse(const std::string_view &, const std::string &, bool);
 
     std::string to_lower(std::string s);
 
     std::string to_lower(std::string_view s);
-
 }

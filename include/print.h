@@ -8,7 +8,8 @@
 using namespace std::string_literals;
 
 struct Colors {
-    const static inline std::string blue = "\033[1;34m",
+    const static inline std::string
+            blue = "\033[1;34m",
             cyan = "\033[1;36m",
             green = "\033[1;32m",
             yellow = "\033[1;33m",
@@ -30,7 +31,7 @@ std::string repeat(const std::string &s, int n) {
     return repeat;
 }
 
-void print_table(const ExecutionResult &table, int width = 20) {
+void print_table(const ExecutionResult &table, int width = 20, int rows = 100) {
     if (not table.is_success()) {
         std::cerr << Colors::red << table.get_error() << Colors::clear << "\n";
     }
@@ -69,13 +70,14 @@ void print_table(const ExecutionResult &table, int width = 20) {
 
     int ind = 0;
     for (auto row: table) {
+        if (++ind > rows) {
+            break;
+        }
         std::cout << Colors::cyan << "║";
-        ++ind;
         for (auto &[col, type]: cols) {
             std::cout << Colors::green << std::setw(width) << std::setfill(' ')
                       << truncate(database::value_to_string(row[col], type), width) << Colors::cyan <<
                       "║";
-
         }
         std::cout << '\n';
     }

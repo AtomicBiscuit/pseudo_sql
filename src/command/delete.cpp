@@ -21,8 +21,11 @@ Table Delete::parse_and_execute(const std::string &str, TableContext &ctx) const
     ColumnContext column_ctx;
     table.add_columns_to_context(table.name(), column_ctx, 0, table.columns().size(), true);
 
-    auto condition = build_execution_tree_from_expression(std::string(view), column_ctx);
-    EXEC_ASSERT(condition->type() == Type::Boolean,
+    auto condition = build_execution_tree_from_expression(std::string(view));
+
+    condition->resolve(column_ctx);
+
+    EXEC_ASSERT(condition->type() == Type::Bool,
                 "Тип выражения `where`(" + type_to_str(condition->type()) + ") не является bool");
 
     return delete_impl(table, condition);

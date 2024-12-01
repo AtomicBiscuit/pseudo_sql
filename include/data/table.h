@@ -44,6 +44,8 @@ namespace database {
 
         void check_valid() const;
 
+        void merge(Table &other) const;
+
         void save_to_file(std::ofstream &) const;
 
         static Table load_from_file(std::ifstream &);

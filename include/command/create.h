@@ -16,6 +16,6 @@ namespace database {
     private:
         static std::tuple<bool, bool, bool> _parse_attributes(std::string_view &);
 
-        static std::shared_ptr<IColumn> _parse_and_create_col(std::string_view &);
+        static std::shared_ptr<IColumn> _parse_and_create_col(const std::string &);
     };
 }

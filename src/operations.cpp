@@ -15,20 +15,6 @@ void BinaryOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
 
     arg1_ = std::move(f);
     arg2_ = std::move(s);
-    type_ = arg1_->type();
-
-    if (arg1_->type() != arg2_->type() or type_ == Type::Bytes) {
-        _throw();
-    }
-    if (type_ == Type::String and op_ != '+') {
-        _throw();
-    }
-    if (type_ == Type::Boolean and op_ != '&' and op_ != '^' and op_ != '|') {
-        _throw();
-    }
-    if (type_ == Type::Integer and op_ != '+' and op_ != '-' and op_ != '*' and op_ != '/' and op_ != '%') {
-        _throw();
-    }
 }
 
 
@@ -50,7 +36,7 @@ database::value_t BinaryOperation::eval(int col) const {
                 if (v1 == 0) throw execution_error("Попытка деления на 0");
                 return v2 % v1;
         }
-    } else if (type_ == Type::Boolean) {
+    } else if (type_ == Type::Bool) {
         bool v1 = get<bool>(arg1_->eval(col));
         bool v2 = get<bool>(arg2_->eval(col));
         switch (op_) {
@@ -73,20 +59,30 @@ void BinaryOperation::_throw() const {
     );
 }
 
+void BinaryOperation::resolve(database::ColumnContext &ctx) {
+    arg1_->resolve(ctx);
+    arg2_->resolve(ctx);
+    type_ = arg1_->type();
+    if (arg1_->type() != arg2_->type() or type_ == Type::Bytes) {
+        _throw();
+    }
+    if (type_ == Type::String and op_ != '+') {
+        _throw();
+    }
+    if (type_ == Type::Bool and op_ != '&' and op_ != '^' and op_ != '|') {
+        _throw();
+    }
+    if (type_ == Type::Integer and op_ != '+' and op_ != '-' and op_ != '*' and op_ != '/' and op_ != '%') {
+        _throw();
+    }
+}
+
 void UnaryOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
     auto f = std::move(ops.back());
     ops.pop_back();
     f->bind(ops);
 
     arg_ = std::move(f);
-    type_ = arg_->type();
-
-    if (type_ == Type::Integer and op_ != '+' and op_ != '-') {
-        _throw();
-    }
-    if (type_ == Type::Boolean and op_ != '!') {
-        _throw();
-    }
 }
 
 
@@ -97,7 +93,7 @@ database::value_t UnaryOperation::eval(int col) const {
             return -v;
         }
         return v;
-    } else if (type_ == Type::Boolean) {
+    } else if (type_ == Type::Bool) {
         return not get<bool>(arg_->eval(col));
     }
     _throw();
@@ -105,6 +101,18 @@ database::value_t UnaryOperation::eval(int col) const {
 
 void UnaryOperation::_throw() const {
     throw syntax_error("Оператор `" + std::string(1, op_) + "` не определен для типа " + type_to_str(type_));
+}
+
+void UnaryOperation::resolve(database::ColumnContext &ctx) {
+    arg_->resolve(ctx);
+    type_ = arg_->type();
+
+    if (type_ == Type::Integer and op_ != '+' and op_ != '-') {
+        _throw();
+    }
+    if (type_ == Type::Bool and op_ != '!') {
+        _throw();
+    }
 }
 
 void ComparisonOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
@@ -118,11 +126,6 @@ void ComparisonOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
 
     arg1_ = std::move(f);
     arg2_ = std::move(s);
-    type_ = Type::Boolean;
-
-    if (arg1_->type() != arg2_->type()) {
-        _throw();
-    }
 }
 
 
@@ -133,7 +136,7 @@ database::value_t ComparisonOperation::eval(int col) const {
         return _compare<std::string>(col);
     } else if (arg1_->type() == Type::Bytes) {
         return _compare<std::vector<bool>>(col);
-    } else if (arg1_->type() == Type::Boolean) {
+    } else if (arg1_->type() == Type::Bool) {
         return _compare<bool>(col);
     }
     _throw();
@@ -143,6 +146,16 @@ void ComparisonOperation::_throw() const {
     throw syntax_error("Оператор `" + op_ + "` не определен для типов " + type_to_str(arg2_->type()) + ", " +
                        type_to_str(arg1_->type())
     );
+}
+
+void ComparisonOperation::resolve(database::ColumnContext &ctx) {
+    arg1_->resolve(ctx);
+    arg2_->resolve(ctx);
+    type_ = Type::Bool;
+
+    if (arg1_->type() != arg2_->type()) {
+        _throw();
+    }
 }
 
 template<typename T>
@@ -176,11 +189,6 @@ void LenOperation::bind(std::vector<std::unique_ptr<Operation>> &ops) {
     f->bind(ops);
 
     arg_ = std::move(f);
-    type_ = Type::Integer;
-
-    if (arg_->type() != Type::String and arg_->type() != Type::Bytes) {
-        _throw();
-    }
 }
 
 database::value_t LenOperation::eval(int col) const {
@@ -192,8 +200,17 @@ database::value_t LenOperation::eval(int col) const {
     _throw();
 }
 
-database::value_t FieldOperation::eval(int col) const {
-    return col_->get_value(col);
+void LenOperation::resolve(database::ColumnContext &ctx) {
+    arg_->resolve(ctx);
+    type_ = Type::Integer;
+
+    if (arg_->type() != Type::String and arg_->type() != Type::Bytes) {
+        _throw();
+    }
+}
+
+database::value_t FieldOperation::eval(int row) const {
+    return col_->get_value(row);
 }
 
 void FieldOperation::resolve(ColumnContext &ctx) {

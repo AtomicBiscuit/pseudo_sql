@@ -6,5 +6,6 @@ set(CMAKE_CXX_STANDARD 23)
 add_executable(pseudo_sql main.cpp)
 
 add_subdirectory(src)
+add_subdirectory(tests)
 
 target_link_libraries(pseudo_sql PUBLIC Database)

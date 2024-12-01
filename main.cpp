@@ -1,6 +1,7 @@
 #include "include/db.h"
 #include "include/print.h"
 
+
 std::string example = R"(
 create table table(
 	{unique, key, autoincrement}i_col:InTeger=5,
@@ -34,6 +35,7 @@ select i_col - 4 * 3 / (|"12"|%(|("123")|%|"123456"|))+1 as num_____1,
 from table
 where i_col >= 6;)";
 
+
 int main() {
     DataBase db;
 
@@ -43,7 +45,7 @@ int main() {
 
     while (std::getline(example_stream, command_str, ';')) {
         auto res = db.execute(command_str);
-        print_table(res);
+        print_table(res, 20, 16); // Второй параметр - ширина столбцов, третий - максимальное число выводимых строк
     }
 
     db.save_to_file("dump.bin");
@@ -52,10 +54,7 @@ int main() {
     while (true) {
         std::getline(std::cin, command_str, ';');
         auto res = db.execute(command_str);
-        print_table(res);
-        if (not res.is_success()) {
-            break;
-        }
+        print_table(res, 20, 100);
     }
     return 0;
 }
